@@ -707,6 +707,54 @@ const GAMES = [
   ["Tue, Apr 6, 2027","Colorado Avalanche"],
 ];
 
+// Official listed start time, in the same order as GAMES above
+const GAME_TIMES = [
+  '6:00 PM',  // Sep 24 Edmonton (preseason)
+  '4:00 PM',  // Sep 26 Seattle (preseason)
+  '7:00 PM',  // Oct 1 Edmonton
+  '7:00 PM',  // Oct 3 Calgary
+  '6:00 PM',  // Oct 4 Vegas
+  '7:00 PM',  // Oct 20 Carolina
+  '7:00 PM',  // Oct 22 Detroit
+  '7:00 PM',  // Oct 25 Minnesota
+  '4:00 PM',  // Oct 31 Toronto
+  '7:00 PM',  // Nov 3 Anaheim
+  '7:30 PM',  // Nov 9 Philadelphia
+  '7:00 PM',  // Nov 13 NY Rangers
+  '8:00 PM',  // Nov 21 Minnesota
+  '6:00 PM',  // Nov 22 Chicago
+  '7:00 PM',  // Dec 4 Buffalo
+  '8:00 PM',  // Dec 5 Dallas
+  '7:00 PM',  // Dec 7 Washington
+  '7:00 PM',  // Dec 10 Nashville
+  '8:00 PM',  // Dec 19 San Jose
+  '7:00 PM',  // Dec 21 Utah
+  '7:30 PM',  // Dec 28 Los Angeles
+  '7:30 PM',  // Dec 30 Seattle
+  '7:00 PM',  // Jan 5 NY Islanders
+  '7:00 PM',  // Jan 7 Tampa Bay
+  '8:00 PM',  // Jan 9 Florida
+  '7:00 PM',  // Jan 14 Seattle
+  '8:00 PM',  // Jan 16 Columbus
+  '6:30 PM',  // Feb 1 Montreal
+  '7:00 PM',  // Feb 3 New Jersey
+  '8:00 PM',  // Feb 13 Winnipeg
+  '7:00 PM',  // Feb 16 Pittsburgh
+  '7:00 PM',  // Feb 18 Ottawa
+  '8:00 PM',  // Feb 20 Colorado
+  '6:00 PM',  // Feb 21 Boston
+  '8:00 PM',  // Feb 27 Calgary
+  '8:00 PM',  // Mar 3 Chicago
+  '7:00 PM',  // Mar 17 Nashville
+  '7:00 PM',  // Mar 20 St. Louis
+  '6:00 PM',  // Mar 21 Edmonton
+  '7:00 PM',  // Mar 23 Los Angeles
+  '7:00 PM',  // Mar 25 Vegas
+  '1:00 PM',  // Mar 27 Anaheim
+  '7:00 PM',  // Apr 3 San Jose
+  '7:00 PM',  // Apr 6 Colorado
+];
+
 // Official per-game tier, in the same order as GAMES above
 const GAME_TIERS = [
   'REG',    // Sep 24 Edmonton (preseason)
@@ -831,13 +879,14 @@ function buildPublicListing(){
 
   GAMES.forEach((g,gi)=>{
     const [date, opp] = g;
+    const time = GAME_TIMES[gi] || '';
 
     SEATS.forEach(s=>{
       const t = data[keyFor(gi,s)];
       if(t.transferTo !== '') return; // moved elsewhere, not available here
       const final = ticketFinalSale(t);
       listing.push({
-        date, opp, seat: s,
+        date, opp, time, seat: s, gameKey: 'g' + gi,
         tier: (TIERS[t.tier] && TIERS[t.tier].label) || '',
         market: t.market || '',
         sold: !isNaN(final.price)
@@ -848,7 +897,7 @@ function buildPublicListing(){
       const t = data[keyFor(inc.originGi, inc.originSeat)];
       const soldPrice = parseFloat(t.transferSoldPrice);
       listing.push({
-        date, opp, seat: inc.originSeat,
+        date, opp, time, seat: inc.originSeat, gameKey: 'g' + gi,
         tier: (TIERS[t.tier] && TIERS[t.tier].label) || '',
         market: t.market || '',
         sold: !isNaN(soldPrice)
