@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sec 101 Row 16 · Ticket Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#04173a;
+    --navy-2:#0a2450;
+    --ice:#eef4fa;
+    --green:#00843d;
+    --green-hi:#5ddc9a;
+    --red:#c0392b;
+    --red-hi:#ff8a7a;
+    --gold:#f0b429;
+    --card-bg:#0e2a58;
+    --input-bg:#0a2148;
+    --line: rgba(255,255,255,0.10);
+    --text-dim: rgba(238,244,250,0.62);
+    /* sticky column widths */
+    --w-date:118px;
+    --w-opp:168px;
+    --w-seat:84px;
+  }
+  *{box-sizing:border-box;}
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #0d2c5c 0%, transparent 60%),
+      var(--navy);
+    color:var(--ice);
+    font-family:'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  .hidden{ display:none !important; }
+
+  /* ===== APP SHELL: uses the full screen, table fills whatever is left ===== */
+  #ownerApp{
+    display:flex; flex-direction:column;
+    height:100vh; height:100dvh;
+  }
+  .topbar{
+    flex:none;
+    display:flex; flex-direction:column; gap:8px;
+    padding:10px 14px 8px;
+    border-bottom:1px solid var(--line);
+    background:rgba(6,26,62,0.92);
+  }
+  .bar-row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .brand{ display:flex; align-items:center; gap:10px; margin-right:auto; min-width:0; }
+  .brand .puck{
+    width:26px; height:26px; border-radius:50%; flex:none;
+    background:var(--green);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-weight:700; font-size:13px; color:#fff;
+  }
+  .brand h1{
+    font-family:'Oswald',sans-serif; font-weight:700; font-style:italic;
+    text-transform:uppercase; font-size:20px; line-height:1; margin:0;
+    white-space:nowrap;
+  }
+  .brand h1 span{ color:var(--green); }
+  .brand .season{
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--text-dim); white-space:nowrap;
+  }
+
+  input[type=text], input[type=email], input[type=password], select, input[type=number]{
+    background:var(--input-bg);
+    border:1px solid var(--line);
+    color:var(--ice);
+    border-radius:7px;
+    padding:7px 9px;
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+  }
+  input:focus, select:focus{ outline:2px solid var(--green); outline-offset:1px; }
+  .search{ flex:1; min-width:160px; max-width:320px; }
+
+  .btn{
+    background:var(--green);
+    color:#fff; border:1px solid var(--green); border-radius:7px;
+    padding:7px 12px; font-size:12.5px; font-weight:600;
+    cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn.secondary{ background:transparent; border:1px solid var(--line); color:var(--ice); }
+  .btn.danger{ background:transparent; border:1px solid rgba(192,57,43,0.55); color:var(--red-hi); }
+  .btn.danger.solid{ background:var(--red); border-color:var(--red); color:#fff; }
+  .btn:hover:not(:disabled){ filter:brightness(1.12); }
+  .btn:disabled{ opacity:.38; cursor:not-allowed; }
+
+  /* Lock toggle */
+  .lock-btn{
+    font-size:13px; padding:8px 14px; border-radius:8px;
+    border:1px solid var(--gold); background:rgba(240,180,41,0.14); color:var(--gold);
+  }
+  .lock-btn.unlocked{
+    border-color:var(--red); background:var(--red); color:#fff;
+    box-shadow:0 0 0 3px rgba(192,57,43,0.25);
+  }
+  .save-status{
+    font-family:'Space Mono',monospace; font-size:10.5px; color:var(--text-dim);
+    min-width:70px; text-align:right;
+  }
+  .save-status.saving{ color:var(--gold); }
+  .save-status.error{ color:var(--red-hi); font-weight:700; }
+
+  .fx-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    border:1px solid var(--line); border-radius:8px; padding:3px 4px 3px 10px;
+    font-size:12px; color:var(--text-dim); background:var(--input-bg);
+  }
+  .fx-chip b{ color:var(--ice); font-weight:600; }
+  .fx-chip input{ width:78px; padding:4px 6px; font-size:12.5px; }
+  .fx-chip .fx-src{ font-size:10.5px; font-family:'Space Mono',monospace; }
+  .fx-chip .fx-src.warn{ color:var(--gold); }
+  .icon-btn{
+    background:transparent; border:1px solid var(--line); color:var(--ice);
+    border-radius:6px; height:26px; min-width:26px; cursor:pointer; font-size:13px; padding:0 6px;
+  }
+  .icon-btn:hover{ border-color:var(--green); }
+
+  /* Mini summary strip (always visible) */
+  .mini-stats{
+    display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center;
+    font-size:12px; color:var(--text-dim);
+  }
+  .mini-stats b{ color:var(--ice); font-family:'Oswald',sans-serif; font-weight:600; font-size:14px; margin-left:3px; }
+  .mini-stats b.pos{ color:var(--green-hi); }
+  .mini-stats b.neg{ color:var(--red-hi); }
+  .summary-toggle{ margin-left:auto; }
+
+  /* Collapsible details panel */
+  .summary-panel{
+    flex:none;
+    max-height:46vh; overflow:auto;
+    padding:12px 14px 4px;
+    border-bottom:1px solid var(--line);
+    background:rgba(4,23,58,0.6);
+  }
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+    gap:10px; margin-bottom:12px;
+  }
+  .stat{
+    background:var(--card-bg); border:1px solid var(--line); border-radius:10px;
+    padding:11px 13px 10px;
+  }
+  .stat .label{
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-dim); margin-bottom:5px;
+  }
+  .stat .value{ font-family:'Oswald',sans-serif; font-size:22px; font-weight:600; }
+  .stat .value.pos{ color:var(--green-hi); }
+  .stat .value.neg{ color:var(--red-hi); }
+  .stat .sub2{ font-size:11px; color:var(--text-dim); margin-top:3px; }
+
+  .panel-grid{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-bottom:12px; }
+  @media(max-width:900px){ .panel-grid{ grid-template-columns:1fr; } }
+  .panel-card{
+    background:var(--card-bg); border:1px solid var(--line); border-radius:10px; padding:11px 14px;
+  }
+  .panel-heading{
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--gold); margin-bottom:8px;
+  }
+  .buyer-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .buyer-chip{ flex:1; min-width:130px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .buyer-chip .bname{ font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+  .dot{width:8px;height:8px;border-radius:50%; display:inline-block;}
+  .buyer-chip .bnum{ font-family:'Oswald',sans-serif; font-size:17px;}
+  .buyer-chip .bsub{ font-size:11px; color:var(--text-dim);}
+
+  .transfer-empty{ color:var(--text-dim); font-size:12.5px; margin:0; }
+  .transfer-item{
+    display:flex; align-items:center; gap:10px;
+    padding:6px 0; border-bottom:1px solid var(--line);
+    font-size:12.5px; flex-wrap:wrap;
+  }
+  .transfer-item:last-child{ border-bottom:none; }
+  .t-route{ flex:1; min-width:180px; }
+  .t-fee{ font-family:'Oswald',sans-serif; font-weight:600; font-size:14px; min-width:70px; text-align:right; }
+  .t-fee.pos{ color:var(--red-hi); }
+  .t-fee.neg{ color:var(--green-hi); }
+  .t-sold{ color:var(--text-dim); font-size:11.5px; min-width:130px; text-align:right; }
+
+  .legend{ font-size:12px; display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center; color:var(--text-dim); }
+  .legend strong{ color:var(--ice); font-weight:600; }
+  .help-text{ font-size:11.5px; color:var(--text-dim); line-height:1.5; margin:8px 0 0; }
+  .customer-link-box{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .customer-link-box input{ flex:1; min-width:200px; font-family:'Space Mono',monospace; font-size:12px; }
+  .customer-link-label{ font-size:12px; color:var(--text-dim); }
+
+  /* ===== TABLE: fills remaining height, so both scrollbars are always on screen ===== */
+  .table-scroll{
+    flex:1 1 auto; min-height:0;
+    overflow:auto;
+    margin:10px 12px 12px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--card-bg);
+    overscroll-behavior:contain;
+    scrollbar-color: rgba(154,164,178,0.55) rgba(4,23,58,0.6);
+  }
+  .table-scroll::-webkit-scrollbar{ width:14px; height:14px; }
+  .table-scroll::-webkit-scrollbar-track{ background:rgba(4,23,58,0.6); }
+  .table-scroll::-webkit-scrollbar-thumb{ background:rgba(154,164,178,0.5); border-radius:8px; border:3px solid rgba(4,23,58,0.6); }
+  .table-scroll::-webkit-scrollbar-thumb:hover{ background:rgba(154,164,178,0.8); }
+  .table-scroll::-webkit-scrollbar-corner{ background:rgba(4,23,58,0.6); }
+
+  table{ border-collapse:separate; border-spacing:0; width:100%; min-width:1500px; }
+  thead th{
+    position:sticky; top:0; z-index:3;
+    background:#0a2148;
+    text-align:left;
+    font-family:'Space Mono',monospace;
+    font-size:10px; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--text-dim);
+    padding:10px 8px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  thead th .th-sub{ display:block; font-size:9px; letter-spacing:.03em; opacity:.75; text-transform:none; }
+  tbody tr{ --row-bg: var(--card-bg); }
+  tbody td{
+    padding:6px 8px;
+    border-bottom:1px solid var(--line);
+    font-size:13px;
+    vertical-align:middle;
+    white-space:nowrap;
+    background-color:var(--row-bg);
+  }
+  tbody tr:hover td{ background-image:linear-gradient(rgba(255,255,255,0.045), rgba(255,255,255,0.045)); }
+  tbody tr.game-start td{ border-top:2px solid rgba(0,132,61,0.35); }
+  tbody tr.row-sold{ --row-bg: color-mix(in srgb, #c0392b 14%, #0e2a58); }
+  tbody tr.game-sold{ --row-bg: color-mix(in srgb, #c0392b 30%, #0e2a58); }
+  tbody tr.virtual-row{ --row-bg: color-mix(in srgb, #f0b429 8%, #0e2a58); }
+  tbody tr.virtual-row.row-sold, tbody tr.virtual-row.game-sold{ --row-bg: color-mix(in srgb, #c0392b 26%, #0e2a58); }
+
+  /* sticky left columns: Date / Opponent / Seat stay put while you scroll sideways */
+  .c-date{ position:sticky; left:0; z-index:1; width:var(--w-date); min-width:var(--w-date); max-width:var(--w-date); }
+  .c-opp{ position:sticky; left:var(--w-date); z-index:1; width:var(--w-opp); min-width:var(--w-opp); max-width:var(--w-opp); overflow:hidden; text-overflow:ellipsis; }
+  .c-seat{ position:sticky; left:calc(var(--w-date) + var(--w-opp)); z-index:1; width:var(--w-seat); min-width:var(--w-seat); max-width:var(--w-seat); box-shadow: 6px 0 8px -6px rgba(0,0,0,0.6); border-right:1px solid var(--line); }
+  thead th.c-date, thead th.c-opp, thead th.c-seat{ z-index:4; }
+
+  .opp{ font-weight:600; }
+  .date-cell{ color:var(--text-dim); font-size:12px; line-height:1.25; }
+  .date-cell .gtime{ display:block; font-size:10.5px; opacity:.75; }
+  tr.next-game td.c-date{ box-shadow: inset 3px 0 0 var(--green-hi); }
+  .seat-badge{
+    display:inline-block; font-family:'Space Mono',monospace;
+    font-size:11px; padding:2px 6px; border-radius:5px;
+    background:rgba(154,164,178,0.15); color:var(--ice);
+  }
+  .in-tag{ display:inline-block; margin-left:3px; font-size:9px; font-weight:700; color:var(--gold); letter-spacing:.04em; }
+
+  .num-input{ width:84px; }
+  .cad-input{ width:88px; }
+  .tier-select{ width:92px; }
+  .sold-select{ width:116px; }
+  .transfer-select{ width:180px; }
+  .tm-cell{ white-space:nowrap; }
+  .btn-copy-market{
+    margin-left:3px; background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:5px; width:24px; height:28px; font-size:13px; line-height:1;
+    cursor:pointer; vertical-align:middle; padding:0;
+  }
+  .btn-copy-market:hover{ color:var(--ice); border-color:var(--green); background:rgba(0,132,61,0.15); }
+  .btn-copy-market.copied{ color:#fff; border-color:var(--green); background:var(--green); }
+  input::placeholder{ font-size:10.5px; font-style:italic; opacity:0.55; }
+  .fx-hint{ display:block; font-size:9.5px; color:var(--text-dim); margin-top:1px; }
+
+  .profit-cell{ font-family:'Oswald',sans-serif; font-weight:600; font-size:14px; }
+  .profit-cell.pos{ color:var(--green-hi); }
+  .profit-cell.neg{ color:var(--red-hi); }
+  .profit-cell.zero{ color:var(--text-dim); font-weight:400; font-family:'Inter',sans-serif; font-size:12px;}
+  .status-pill{ font-size:10.5px; padding:3px 8px; border-radius:20px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+  .status-sold{ background:rgba(0,132,61,0.25); color:var(--green-hi); }
+  .status-open{ background:rgba(154,164,178,0.18); color:var(--text-dim); }
+  .status-transferred{ background:rgba(240,180,41,0.22); color:var(--gold); }
+  .readonly-note{ color:var(--text-dim); font-size:12px; font-style:italic; }
+  .from-note{ font-size:11.5px; color:var(--gold); white-space:normal; max-width:180px; line-height:1.25; }
+
+  .actions-cell{ text-align:center; }
+  .btn-reset-game{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:15px; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .btn-reset-game:hover{ color:var(--ice); border-color:var(--red); background:rgba(192,57,43,0.25); }
+
+  /* ===== LOCKED MODE: fields read like plain text and can't be changed ===== */
+  body.is-locked #tableBody input,
+  body.is-locked #tableBody select{
+    background:transparent; border-color:transparent;
+    color:var(--ice); -webkit-text-fill-color:var(--ice); opacity:1;
+    -webkit-appearance:none; appearance:none;
+    pointer-events:none;
+  }
+  #tableBody select.is-empty{ color:var(--text-dim); }
+  body.is-locked #tableBody select.is-empty{ color:transparent; -webkit-text-fill-color:transparent; }
+  body.is-locked #tableBody input::placeholder{ color:transparent; -webkit-text-fill-color:transparent; }
+  body.is-locked #tableBody button{ visibility:hidden; pointer-events:none; }
+  body.is-locked .edit-only{ opacity:.38; pointer-events:none; }
+  /* hide number spinners everywhere, they're easy to bump by accident */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  input[type=number]{ -moz-appearance:textfield; }
+  body:not(.is-locked) .table-scroll{ border-color:rgba(192,57,43,0.55); }
+
+  /* ===== MODAL + TOAST ===== */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(2,8,22,0.72);
+    display:flex; align-items:center; justify-content:center;
+    z-index:1000; padding:20px;
+  }
+  .modal-box{
+    background:var(--navy-2); border:1px solid var(--line); border-radius:14px;
+    padding:22px 24px; max-width:420px; width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal-title{ font-family:'Oswald',sans-serif; font-size:19px; font-weight:600; margin-bottom:8px; }
+  .modal-message{ color:var(--text-dim); font-size:13.5px; line-height:1.5; margin:0 0 18px; white-space:pre-line; }
+  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; }
+  .toast{
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    background:#0a2148; border:1px solid var(--line); color:var(--ice);
+    padding:10px 16px; border-radius:10px; font-size:13px; z-index:1100;
+    box-shadow:0 10px 30px rgba(0,0,0,0.45);
+    display:flex; align-items:center; gap:12px;
+    max-width:calc(100vw - 32px);
+  }
+  .toast button{ background:transparent; border:1px solid var(--line); color:var(--gold); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:12px; }
+
+  @media(max-width:700px){
+    :root{ --w-date:92px; --w-opp:120px; --w-seat:74px; }
+    .brand h1{ font-size:16px; }
+    .brand .season{ display:none; }
+    .table-scroll{ margin:6px; }
+  }
+</style>
+</head>
+<body class="is-locked">
+
+<div id="loginOverlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Sign in</div>
+    <p class="modal-message">This dashboard has your purchase prices, profit, and transfer data. Sign in with your owner account to continue.</p>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required style="width:100%; margin-bottom:10px;">
+      <input type="password" id="loginPassword" placeholder="Password" required style="width:100%; margin-bottom:10px;">
+      <p id="loginError" style="color:#ff8a7a; font-size:12.5px; min-height:16px; margin:0 0 10px;"></p>
+      <button type="submit" class="btn" style="width:100%; justify-content:center;">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<div id="ownerApp" class="hidden">
+
+  <div class="topbar">
+    <div class="bar-row">
+      <div class="brand">
+        <span class="puck">C</span>
+        <div>
+          <h1>Sec 101 · Row 16 <span>· Seats 101–102</span></h1>
+          <div class="season">Vancouver Canucks · 2026–27 ledger</div>
+        </div>
+      </div>
+      <span class="save-status" id="saveStatus">Loaded</span>
+      <button class="btn lock-btn" id="lockBtn" type="button">🔒 Locked · Unlock to edit</button>
+      <button class="btn secondary edit-only" id="undoBtn" type="button" title="Undo (Ctrl+Z). History lasts until you reload the page." disabled>↶ Undo</button>
+      <button class="btn secondary edit-only" id="redoBtn" type="button" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button>
+    </div>
+    <div class="bar-row">
+      <input type="text" id="searchBox" class="search" placeholder="Search opponent…">
+      <select id="statusFilter">
+        <option value="all">All tickets</option>
+        <option value="sold">Sold only</option>
+        <option value="open">Unsold only</option>
+      </select>
+      <select id="buyerFilter">
+        <option value="all">Any buyer</option>
+      </select>
+      <button class="btn secondary" id="jumpNextBtn" type="button" title="Scroll to the next upcoming game">⤓ Next game</button>
+      <span class="fx-chip" title="Used to fill Market CAD whenever you type a Market USD price">
+        1 USD = <input type="number" step="0.0001" id="fxInput" class="edit-only" placeholder="rate"> <b>CAD</b>
+        <span class="fx-src" id="fxSource">…</span>
+        <button class="icon-btn edit-only" id="fxRefreshBtn" type="button" title="Fetch the latest USD→CAD rate">↻</button>
+      </span>
+      <button class="btn secondary edit-only" id="recalcCadBtn" type="button" title="Recompute Market CAD on every ticket that has a Market USD, using the current rate">USD → CAD (all)</button>
+      <button class="btn secondary edit-only" id="copyAllMarketBtn" type="button" title="Fill TM Listed from Market CAD on every unsold ticket">Market CAD → TM (all)</button>
+      <button class="btn secondary" id="exportBtn" type="button">Export CSV</button>
+      <button class="btn danger edit-only" id="resetBtn" type="button">Reset all</button>
+      <button class="btn secondary" id="signOutBtn" type="button">Sign out</button>
+    </div>
+    <div class="bar-row">
+      <div class="mini-stats" id="miniStats"></div>
+      <button class="btn secondary summary-toggle" id="summaryToggle" type="button">Details ▾</button>
+    </div>
+  </div>
+
+  <div class="summary-panel hidden" id="summaryPanel">
+    <div class="stats">
+      <div class="stat"><div class="label">Total Cost</div><div class="value" id="statCost">$0</div><div class="sub2" id="statCostSub">Both seats, all games</div></div>
+      <div class="stat"><div class="label">Sold Revenue</div><div class="value" id="statRevenue">$0</div><div class="sub2" id="statSoldCount">0 sold</div></div>
+      <div class="stat"><div class="label">Net Profit</div><div class="value" id="statProfit">$0</div><div class="sub2">Sold price minus total cost</div></div>
+      <div class="stat"><div class="label">Market Edge</div><div class="value" id="statMarketEdge">$0</div><div class="sub2">Unsold, at Market CAD</div></div>
+      <div class="stat"><div class="label">Avg Profit / Sold</div><div class="value" id="statAvg">$0</div><div class="sub2">&nbsp;</div></div>
+      <div class="stat"><div class="label">Transfer / Extra Costs</div><div class="value" id="statTransferFees">$0</div><div class="sub2" id="statTransferCount">0 tickets</div></div>
+      <div class="stat"><div class="label">Listed on Ticketmaster</div><div class="value" id="statTmListed">0</div><div class="sub2" id="statTmUnlisted">&nbsp;</div></div>
+    </div>
+    <div class="panel-grid">
+      <div class="panel-card">
+        <div class="panel-heading">Buyers</div>
+        <div class="buyer-row" id="buyerRow"></div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-heading">Transfers &amp; extra costs</div>
+        <div id="transferList"></div>
+      </div>
+    </div>
+    <div class="panel-card" style="margin-bottom:12px;">
+      <div class="panel-heading">Variable pricing / seat</div>
+      <div class="legend" id="legendBar"></div>
+      <div class="customer-link-box">
+        <span class="customer-link-label">Public listing page:</span>
+        <input type="text" id="customerLinkInput" readonly>
+        <button class="btn secondary" id="customerLinkCopyBtn" type="button">Copy</button>
+      </div>
+      <p class="help-text">The dashboard opens <b>locked</b> — click Unlock to edit, and it re-locks itself after 10 minutes without activity. Editing Seat 101 auto-fills Seat 102 (edit 102 afterward if it sells differently). Type a price in <b>Market USD</b> and <b>Market CAD</b> fills in at the rate shown up top; TM Listed is in CAD. <b>Transfer / Extra $</b> can be used on any ticket, transferred or not, and is added to that ticket's cost. Anything that clears a value asks first, and Undo reverses any change until you reload.</p>
+    </div>
+  </div>
+
+  <div class="table-scroll" id="tableScroll">
+    <table>
+      <thead>
+        <tr>
+          <th class="c-date">Date</th>
+          <th class="c-opp">Opponent</th>
+          <th class="c-seat">Seat</th>
+          <th>Tier</th>
+          <th>Purchase $<span class="th-sub">CAD</span></th>
+          <th>Market USD</th>
+          <th>Market CAD<span class="th-sub">auto from USD</span></th>
+          <th>TM Listed<span class="th-sub">CAD</span></th>
+          <th>Sold $</th>
+          <th>Sold To</th>
+          <th>Transfer To</th>
+          <th>Transfer / Extra $<span class="th-sub">added to cost</span></th>
+          <th>Profit</th>
+          <th>Status</th>
+          <th>Reset</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="confirmOverlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title" id="confirmTitle">Are you sure?</div>
+    <p class="modal-message" id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button class="btn secondary" id="confirmCancelBtn" type="button">Cancel</button>
+      <button class="btn danger solid" id="confirmOkBtn" type="button">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"><span id="toastMsg"></span><button id="toastAction" type="button" class="hidden">Undo</button></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt8YWagCc8357we8Sl6qg4dBGliALgGmc",
+  authDomain: "canucks-tickets-208e5.firebaseapp.com",
+  databaseURL: "https://canucks-tickets-208e5-default-rtdb.firebaseio.com",
+  projectId: "canucks-tickets-208e5",
+  storageBucket: "canucks-tickets-208e5.firebasestorage.app",
+  messagingSenderId: "911748198570",
+  appId: "1:911748198570:web:705495c3403c810ac520d3"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const auth = getAuth(firebaseApp);
+
+const TIERS = {
+  REG:   { label:'REG',    price:92.16 },
+  REGP:  { label:'REG+',   price:126.72 },
+  PREM:  { label:'PREM',   price:152.64 },
+  PREMP: { label:'PREM+',  price:187.20 },
+  MARQ:  { label:'MARQ',   price:244.80 },
+  MARQP: { label:'MARQ+',  price:279.36 },
+  CUSTOM:{ label:'CUSTOM', price:null }, // preseason: not on the standard pricing table, enter manually
+};
+const BUYERS = ['Ticketmaster','Victaulic','John','Facebook'];
+
+const GAMES = [
+  ["Thu, Sep 24, 2026","Edmonton Oilers"],
+  ["Sat, Sep 26, 2026","Seattle Kraken"],
+  ["Thu, Oct 1, 2026","Edmonton Oilers"],
+  ["Sat, Oct 3, 2026","Calgary Flames"],
+  ["Sun, Oct 4, 2026","Vegas Golden Knights"],
+  ["Tue, Oct 20, 2026","Carolina Hurricanes"],
+  ["Thu, Oct 22, 2026","Detroit Red Wings"],
+  ["Sun, Oct 25, 2026","Minnesota Wild"],
+  ["Sat, Oct 31, 2026","Toronto Maple Leafs"],
+  ["Tue, Nov 3, 2026","Anaheim Ducks"],
+  ["Mon, Nov 9, 2026","Philadelphia Flyers"],
+  ["Fri, Nov 13, 2026","New York Rangers"],
+  ["Sat, Nov 21, 2026","Minnesota Wild"],
+  ["Sun, Nov 22, 2026","Chicago Blackhawks"],
+  ["Fri, Dec 4, 2026","Buffalo Sabres"],
+  ["Sat, Dec 5, 2026","Dallas Stars"],
+  ["Mon, Dec 7, 2026","Washington Capitals"],
+  ["Thu, Dec 10, 2026","Nashville Predators"],
+  ["Sat, Dec 19, 2026","San Jose Sharks"],
+  ["Mon, Dec 21, 2026","Utah Mammoth"],
+  ["Mon, Dec 28, 2026","Los Angeles Kings"],
+  ["Wed, Dec 30, 2026","Seattle Kraken"],
+  ["Tue, Jan 5, 2027","New York Islanders"],
+  ["Thu, Jan 7, 2027","Tampa Bay Lightning"],
+  ["Sat, Jan 9, 2027","Florida Panthers"],
+  ["Thu, Jan 14, 2027","Seattle Kraken"],
+  ["Sat, Jan 16, 2027","Columbus Blue Jackets"],
+  ["Mon, Feb 1, 2027","Montreal Canadiens"],
+  ["Wed, Feb 3, 2027","New Jersey Devils"],
+  ["Sat, Feb 13, 2027","Winnipeg Jets"],
+  ["Tue, Feb 16, 2027","Pittsburgh Penguins"],
+  ["Thu, Feb 18, 2027","Ottawa Senators"],
+  ["Sat, Feb 20, 2027","Colorado Avalanche"],
+  ["Sun, Feb 21, 2027","Boston Bruins"],
+  ["Sat, Feb 27, 2027","Calgary Flames"],
+  ["Wed, Mar 3, 2027","Chicago Blackhawks"],
+  ["Wed, Mar 17, 2027","Nashville Predators"],
+  ["Sat, Mar 20, 2027","St. Louis Blues"],
+  ["Sun, Mar 21, 2027","Edmonton Oilers"],
+  ["Tue, Mar 23, 2027","Los Angeles Kings"],
+  ["Thu, Mar 25, 2027","Vegas Golden Knights"],
+  ["Sat, Mar 27, 2027","Anaheim Ducks"],
+  ["Sat, Apr 3, 2027","San Jose Sharks"],
+  ["Tue, Apr 6, 2027","Colorado Avalanche"],
+];
+
+// Official listed start time, in the same order as GAMES above
+const GAME_TIMES = [
+  '6:00 PM','4:00 PM','7:00 PM','7:00 PM','6:00 PM','7:00 PM','7:00 PM','7:00 PM','4:00 PM','7:00 PM',
+  '7:30 PM','7:00 PM','8:00 PM','6:00 PM','7:00 PM','8:00 PM','7:00 PM','7:00 PM','8:00 PM','7:00 PM',
+  '7:30 PM','7:30 PM','7:00 PM','7:00 PM','8:00 PM','7:00 PM','8:00 PM','6:30 PM','7:00 PM','8:00 PM',
+  '7:00 PM','7:00 PM','8:00 PM','6:00 PM','8:00 PM','8:00 PM','7:00 PM','7:00 PM','6:00 PM','7:00 PM',
+  '7:00 PM','1:00 PM','7:00 PM','7:00 PM',
+];
+
+// Official per-game tier, in the same order as GAMES above
+const GAME_TIERS = [
+  'REG','CUSTOM','MARQ','REGP','REG','REG','REG','PREMP','MARQP','REG',
+  'REG','REGP','PREM','REG','REG','REGP','PREM','REG','PREMP','PREM',
+  'PREM','PREM','REG','REG','PREM','REG','REGP','PREMP','REG','PREM',
+  'PREM','REG','REGP','PREM','REGP','REGP','REG','REGP','MARQ','REG',
+  'REGP','REGP','PREMP','REGP',
+];
+
+const SEATS = ['101','102'];
+let data = {}; // key `${gameIdx}-${seat}` -> ticket
+let saveTimer = null;
+let savePending = false;
+
+// ---------- FX (USD -> CAD) ----------
+let fx = { rate:null, source:'', date:'', manual:false };
+
+function defaultTicket(gameIdx){
+  const tierKey = GAME_TIERS[gameIdx] || '';
+  const tierInfo = TIERS[tierKey];
+  const purchase = (tierInfo && tierInfo.price != null) ? tierInfo.price.toFixed(2) : '';
+  // market = Market CAD (what the public listing shows); marketUsd = Market USD input
+  return { tier:tierKey, purchase:purchase, marketUsd:'', market:'', tmListed:'', sold:'', soldTo:'', transferTo:'', transferFee:'', transferSoldPrice:'', transferSoldTo:'' };
+}
+
+function num(v){ return parseFloat(v); }
+function isBlank(v){ return v === undefined || v === null || String(v).trim() === ''; }
+
+// Transfer / Extra $ always counts toward cost, whether or not the ticket was
+// moved to another game (e.g. paying more to upgrade/exchange for the same game).
+function effectiveCost(t){
+  const purchase = num(t.purchase);
+  const fee = num(t.transferFee);
+  let cost = 0;
+  if(!isNaN(purchase)) cost += purchase;
+  if(!isNaN(fee)) cost += fee;
+  return cost;
+}
+
+function ticketFinalSale(t){
+  if(t.transferTo !== ''){
+    return { price: num(t.transferSoldPrice), buyer: t.transferSoldTo };
+  }
+  return { price: num(t.sold), buyer: t.soldTo };
+}
+
+function keyFor(g,s){ return g + '-' + s; }
+function gameLabel(gi){ return GAMES[gi][0] + ' vs ' + GAMES[gi][1]; }
+function shortGame(gi){ return GAMES[gi][0].replace(/^\w+, /,'').replace(/, \d{4}$/,'') + ' vs ' + GAMES[gi][1]; }
+
+function stableGameKey(date, opp){
+  return (date + '_' + opp).replace(/[^0-9A-Za-z]+/g, '_');
+}
+
+const CURRENT_SCHEMA_VERSION = 2;
+const PRESEASON_GAMES_INSERTED = 2;
+
+function migrateToV2(oldData){
+  const migrated = {};
+  Object.keys(oldData).forEach(k=>{
+    const idx = k.lastIndexOf('-');
+    const gi = parseInt(k.slice(0, idx), 10);
+    const seat = k.slice(idx + 1);
+    if(isNaN(gi)){ migrated[k] = oldData[k]; return; }
+    const t = Object.assign({}, oldData[k]);
+    if(t.transferTo !== '' && t.transferTo !== undefined && t.transferTo !== null){
+      const dest = parseInt(t.transferTo, 10);
+      if(!isNaN(dest)) t.transferTo = String(dest + PRESEASON_GAMES_INSERTED);
+    }
+    migrated[keyFor(gi + PRESEASON_GAMES_INSERTED, seat)] = t;
+  });
+  return migrated;
+}
+
+async function loadData(){
+  let migrationApplied = false;
+  try{
+    const snap = await getDoc(doc(db, 'tickets', 'all'));
+    if(snap.exists() && snap.data().json){
+      const d = snap.data();
+      data = JSON.parse(d.json);
+      const savedVersion = d.schemaVersion || 1;
+      if(savedVersion < 2){
+        data = migrateToV2(data);
+        migrationApplied = true;
+      }
+      if(d.fxRate){
+        fx.rate = num(d.fxRate);
+        fx.source = 'saved';
+        fx.date = d.fxDate || '';
+        fx.manual = !!d.fxManual;
+      }
+    }
+  }catch(e){
+    console.error('load failed', e);
+    setSaveStatus('error', 'Load failed!');
+    data = {};
+  }
+  GAMES.forEach((g,gi)=>{
+    SEATS.forEach(s=>{
+      const k = keyFor(gi,s);
+      if(!data[k]){
+        data[k] = defaultTicket(gi);
+      } else {
+        const d = defaultTicket(gi);
+        Object.keys(d).forEach(field=>{
+          if(!(field in data[k])) data[k][field] = '';
+        });
+      }
+    });
+  });
+  if(migrationApplied){
+    try{ await writeDoc(); }catch(e){ console.error('failed to persist migration', e); }
+  }
+}
+
+function docPayload(){
+  return {
+    json: JSON.stringify(data),
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    fxRate: fx.rate || null,
+    fxDate: fx.date || '',
+    fxManual: !!fx.manual,
+    updatedAt: serverTimestamp()
+  };
+}
+async function writeDoc(){
+  await setDoc(doc(db, 'tickets', 'all'), docPayload());
+}
+
+function setSaveStatus(kind, text){
+  const el = document.getElementById('saveStatus');
+  el.className = 'save-status ' + (kind || '');
+  el.textContent = text;
+}
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  savePending = true;
+  setSaveStatus('saving', 'Saving…');
+  saveTimer = setTimeout(flushSave, 350);
+}
+async function flushSave(){
+  clearTimeout(saveTimer);
+  try{
+    await writeDoc();
+    savePending = false;
+    const now = new Date();
+    setSaveStatus('', 'Saved ' + now.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}));
+  }catch(e){
+    console.error('save failed', e);
+    setSaveStatus('error', 'SAVE FAILED');
+    toast('Save failed — check your connection. Your change is still on screen; edit again to retry.');
+  }
+  syncPublicListing();
+}
+
+// Customer-safe subset: date, opponent, seat, tier, Market CAD, sold flag only.
+function buildPublicListing(){
+  const incomingMap = buildIncomingMap();
+  const listing = [];
+  GAMES.forEach((g,gi)=>{
+    const [date, opp] = g;
+    const time = GAME_TIMES[gi] || '';
+    SEATS.forEach(s=>{
+      const t = data[keyFor(gi,s)];
+      if(t.transferTo !== '') return;
+      const final = ticketFinalSale(t);
+      listing.push({
+        date, opp, time, seat: s, gameKey: stableGameKey(date, opp),
+        tier: (TIERS[t.tier] && TIERS[t.tier].label) || '',
+        market: t.market || '',
+        sold: !isNaN(final.price)
+      });
+    });
+    (incomingMap[gi] || []).forEach(inc=>{
+      const t = data[keyFor(inc.originGi, inc.originSeat)];
+      const soldPrice = num(t.transferSoldPrice);
+      listing.push({
+        date, opp, time, seat: inc.originSeat, gameKey: stableGameKey(date, opp),
+        tier: (TIERS[t.tier] && TIERS[t.tier].label) || '',
+        market: t.market || '',
+        sold: !isNaN(soldPrice)
+      });
+    });
+  });
+  return listing;
+}
+
+let publicSyncTimer = null;
+function syncPublicListing(){
+  clearTimeout(publicSyncTimer);
+  publicSyncTimer = setTimeout(syncPublicListingNow, 250);
+}
+async function syncPublicListingNow(){
+  clearTimeout(publicSyncTimer);
+  try{
+    const listing = buildPublicListing();
+    await setDoc(doc(db, 'listings', 'current'), { json: JSON.stringify({ listing }), updatedAt: serverTimestamp() });
+  }catch(e){ console.error('public listing sync failed', e); }
+}
+
+function money(n){
+  if(n === '' || n === null || isNaN(n)) return '$0';
+  const sign = n < 0 ? '-' : '';
+  return sign + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- TOAST ----------
+let toastTimer = null;
+function toast(msg, action){
+  const el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  const btn = document.getElementById('toastAction');
+  if(action){
+    btn.textContent = action.label;
+    btn.onclick = ()=>{ el.classList.add('hidden'); action.fn(); };
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+    btn.onclick = null;
+  }
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.add('hidden'), action ? 6000 : 3200);
+}
+
+// ---------- CONFIRM MODAL (window.confirm is unreliable, so on-page) ----------
+let pendingConfirm = null;
+function openConfirmModal(message, onConfirmed, title, opts){
+  opts = opts || {};
+  pendingConfirm = { ok:onConfirmed, cancel:opts.onCancel || null };
+  document.getElementById('confirmTitle').textContent = title || 'Are you sure?';
+  document.getElementById('confirmMessage').textContent = message;
+  const okBtn = document.getElementById('confirmOkBtn');
+  okBtn.textContent = opts.okLabel || 'Yes, do it';
+  okBtn.className = 'btn ' + (opts.safe ? '' : 'danger solid');
+  document.getElementById('confirmCancelBtn').classList.toggle('hidden', !!opts.hideCancel);
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('confirmCancelBtn').focus(), 0);
+}
+function isModalOpen(){ return !document.getElementById('confirmOverlay').classList.contains('hidden'); }
+function resolveConfirm(confirmed){
+  const p = pendingConfirm;
+  pendingConfirm = null;
+  document.getElementById('confirmOverlay').classList.add('hidden');
+  if(!p) return;
+  if(confirmed){ if(p.ok) p.ok(); }
+  else if(p.cancel){ p.cancel(); }
+}
+function initConfirmModal(){
+  document.getElementById('confirmCancelBtn').addEventListener('click', ()=>resolveConfirm(false));
+  document.getElementById('confirmOverlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'confirmOverlay') resolveConfirm(false);
+  });
+  document.getElementById('confirmOkBtn').addEventListener('click', ()=>resolveConfirm(true));
+}
+
+// ---------- UNDO / REDO ----------
+const undoStack = [];
+const redoStack = [];
+const UNDO_LIMIT = 200;
+function snapshot(){ return JSON.stringify(data); }
+function pushUndo(label){
+  undoStack.push({ s:snapshot(), label });
+  if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoButtons();
+}
+function restoreSnapshot(s){
+  data = JSON.parse(s);
+  scheduleSave();
+  renderAll();
+}
+function undo(){
+  if(locked || !undoStack.length) return;
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const e = undoStack.pop();
+  redoStack.push({ s:snapshot(), label:e.label });
+  restoreSnapshot(e.s);
+  updateUndoButtons();
+  toast('Undid: ' + e.label, { label:'Redo', fn:redo });
+}
+function redo(){
+  if(locked || !redoStack.length) return;
+  const e = redoStack.pop();
+  undoStack.push({ s:snapshot(), label:e.label });
+  restoreSnapshot(e.s);
+  updateUndoButtons();
+  toast('Redid: ' + e.label);
+}
+// Used when a confirm is cancelled: roll back to the snapshot taken before
+// the edit, without leaving it on the redo stack.
+function discardLastEdit(){
+  const e = undoStack.pop();
+  if(e) restoreSnapshot(e.s);
+  updateUndoButtons();
+}
+function updateUndoButtons(){
+  const u = document.getElementById('undoBtn');
+  const r = document.getElementById('redoBtn');
+  u.disabled = locked || !undoStack.length;
+  r.disabled = locked || !redoStack.length;
+  u.textContent = '↶ Undo' + (undoStack.length ? ' (' + undoStack.length + ')' : '');
+  u.title = undoStack.length ? ('Undo: ' + undoStack[undoStack.length-1].label + ' (Ctrl+Z)') : 'Nothing to undo';
+  r.title = redoStack.length ? ('Redo: ' + redoStack[redoStack.length-1].label) : 'Nothing to redo';
+}
+
+// ---------- LOCK ----------
+let locked = true;
+let idleTimer = null;
+const AUTO_LOCK_MS = 10 * 60 * 1000;
+function setLocked(v){
+  if(v && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  locked = v;
+  document.body.classList.toggle('is-locked', locked);
+  const btn = document.getElementById('lockBtn');
+  btn.classList.toggle('unlocked', !locked);
+  btn.textContent = locked ? '🔒 Locked · Unlock to edit' : '🔓 Editing · Click to lock';
+  applyLockToControls();
+  updateUndoButtons();
+  resetIdleTimer();
+}
+function markEmptySelects(){
+  document.querySelectorAll('#tableBody select').forEach(el=>el.classList.toggle('is-empty', el.value === ''));
+}
+function applyLockToControls(){
+  document.querySelectorAll('#tableBody [data-field], #tableBody [data-action], .edit-only').forEach(el=>{
+    if('disabled' in el) el.disabled = locked;
+  });
+  markEmptySelects();
+  if(!locked) updateUndoButtons();
+}
+function resetIdleTimer(){
+  clearTimeout(idleTimer);
+  if(locked) return;
+  idleTimer = setTimeout(()=>{
+    if(isModalOpen()) { resetIdleTimer(); return; }
+    setLocked(true);
+    toast('Auto-locked after 10 minutes without activity.');
+  }, AUTO_LOCK_MS);
+}
+
+// ---------- LEGEND / FILTERS ----------
+function buildLegend(){
+  const bar = document.getElementById('legendBar');
+  bar.innerHTML = '';
+  Object.values(TIERS).forEach(t=>{
+    const span = document.createElement('span');
+    span.innerHTML = `<strong>${t.label}</strong> ${t.price != null ? '$'+t.price.toFixed(2) : 'set manually'}`;
+    bar.appendChild(span);
+  });
+}
+function buildBuyerFilterOptions(){
+  const sel = document.getElementById('buyerFilter');
+  BUYERS.forEach(b=>{
+    const o = document.createElement('option');
+    o.value = b; o.textContent = b;
+    sel.appendChild(o);
+  });
+}
+const BUYER_COLORS = { 'Ticketmaster':'#3b82f6', 'Victaulic':'#f0b429', 'John':'#5ddc9a', 'Facebook':'#818cf8' };
+
+// ---------- STATS ----------
+function renderStats(){
+  document.getElementById('statCostSub').textContent = 'Both seats, ' + GAMES.length + ' games';
+
+  let totalCost=0, revenue=0, profit=0, soldCount=0, marketEdge=0;
+  let feesTotal=0, transferCount=0, extraOnlyCount=0;
+  let tmListedCount=0, tmUnlistedCount=0;
+  const buyerTotals = {}; BUYERS.forEach(b=>buyerTotals[b]={count:0,revenue:0,profit:0});
+  const items = [];
+
+  GAMES.forEach((g,gi)=>{
+    SEATS.forEach(s=>{
+      const t = data[keyFor(gi,s)];
+      const market = num(t.market);
+      const fee = num(t.transferFee);
+      const cost = effectiveCost(t);
+      totalCost += cost;
+      if(!isNaN(fee)) feesTotal += fee;
+
+      if(t.transferTo !== ''){
+        transferCount++;
+        items.push({ gi, seat:s, destGi: parseInt(t.transferTo,10), fee: isNaN(fee)?0:fee, soldPrice: num(t.transferSoldPrice), soldTo: t.transferSoldTo });
+      } else if(!isNaN(fee) && fee !== 0){
+        extraOnlyCount++;
+        items.push({ gi, seat:s, destGi:null, fee, soldPrice: num(t.sold), soldTo: t.soldTo });
+      }
+
+      const final = ticketFinalSale(t);
+      if(!isNaN(final.price)){
+        soldCount++;
+        revenue += final.price;
+        profit += (final.price - cost);
+        if(final.buyer && buyerTotals[final.buyer]){
+          buyerTotals[final.buyer].count++;
+          buyerTotals[final.buyer].revenue += final.price;
+          buyerTotals[final.buyer].profit += (final.price - cost);
+        }
+      } else if(t.transferTo === '' && !isNaN(market)){
+        marketEdge += (market - cost);
+      }
+      if(isNaN(final.price) && t.transferTo === ''){
+        if(!isNaN(num(t.tmListed))) tmListedCount++;
+        else tmUnlistedCount++;
+      }
+    });
+  });
+
+  const total = GAMES.length * SEATS.length;
+  const cls = v => v>0?'pos':v<0?'neg':'';
+  document.getElementById('statCost').textContent = money(totalCost);
+  document.getElementById('statRevenue').textContent = money(revenue);
+  const profitEl = document.getElementById('statProfit');
+  profitEl.textContent = money(profit);
+  profitEl.className = 'value ' + cls(profit);
+  document.getElementById('statSoldCount').textContent = soldCount + ' of ' + total + ' tickets sold';
+  const edgeEl = document.getElementById('statMarketEdge');
+  edgeEl.textContent = money(marketEdge);
+  edgeEl.className = 'value ' + cls(marketEdge);
+  document.getElementById('statAvg').textContent = money(soldCount ? profit/soldCount : 0);
+  document.getElementById('statTransferFees').textContent = money(feesTotal);
+  document.getElementById('statTransferCount').textContent = transferCount + ' transferred · ' + extraOnlyCount + ' extra-cost only';
+  document.getElementById('statTmListed').textContent = tmListedCount;
+  document.getElementById('statTmUnlisted').textContent = tmUnlistedCount + ' unsold not listed';
+
+  document.getElementById('miniStats').innerHTML =
+    `<span>Cost<b>${money(totalCost)}</b></span>` +
+    `<span>Revenue<b>${money(revenue)}</b></span>` +
+    `<span>Profit<b class="${cls(profit)}">${money(profit)}</b></span>` +
+    `<span>Sold<b>${soldCount}/${total}</b></span>` +
+    `<span>Market edge<b class="${cls(marketEdge)}">${money(marketEdge)}</b></span>` +
+    `<span>Transfer/extra<b>${money(feesTotal)}</b></span>` +
+    `<span>On TM<b>${tmListedCount}</b></span>`;
+
+  const buyerRow = document.getElementById('buyerRow');
+  buyerRow.innerHTML = BUYERS.map(b=>{
+    const bt = buyerTotals[b];
+    return `<div class="buyer-chip">
+      <div class="bname"><span class="dot" style="background:${BUYER_COLORS[b]}"></span>${b}</div>
+      <div class="bnum">${bt.count} sold</div>
+      <div class="bsub">${money(bt.revenue)} rev · ${money(bt.profit)} profit</div>
+    </div>`;
+  }).join('');
+
+  const box = document.getElementById('transferList');
+  if(items.length === 0){
+    box.innerHTML = '<p class="transfer-empty">Nothing yet. Pick "Transfer To" on a ticket to move it, or enter a Transfer / Extra $ on any ticket you paid more for.</p>';
+  } else {
+    box.innerHTML = items.map(it=>`
+      <div class="transfer-item">
+        <span class="seat-badge">Seat ${it.seat}</span>
+        <span class="t-route">${it.destGi === null ? (escapeHtml(shortGame(it.gi)) + ' <span class="readonly-note">· extra cost, same game</span>') : (escapeHtml(shortGame(it.gi)) + ' &rarr; ' + escapeHtml(shortGame(it.destGi)))}</span>
+        <span class="t-fee ${it.fee>=0?'pos':'neg'}">${money(it.fee)}</span>
+        <span class="t-sold">${isNaN(it.soldPrice) ? 'Not sold yet' : (money(it.soldPrice) + (it.soldTo ? ' · '+escapeHtml(it.soldTo) : ''))}</span>
+      </div>`).join('');
+  }
+}
+
+// ---------- ROW HELPERS ----------
+function profitHtml(v){ return v===null ? '—' : money(v); }
+function profitClass(v){ return 'profit-cell ' + (v===null?'zero':(v>=0?'pos':'neg')); }
+
+function refreshComputedForKey(key){
+  const t = data[key];
+  if(!t) return;
+  const cost = effectiveCost(t);
+  document.querySelectorAll(`tr[data-key="${key}"]`).forEach(rowEl=>{
+    const role = rowEl.dataset.role;
+    const profitTd = rowEl.querySelector('.profit-cell');
+    const statusTd = rowEl.querySelector('.status-cell');
+    if(!profitTd || !statusTd) return;
+    if(role === 'primary'){
+      const isTransferred = t.transferTo !== '';
+      const sold = num(t.sold);
+      const pv = (!isTransferred && !isNaN(sold)) ? sold - cost : null;
+      profitTd.textContent = profitHtml(pv);
+      profitTd.className = profitClass(pv);
+      statusTd.innerHTML = isTransferred ? '<span class="status-pill status-transferred">Transferred</span>'
+        : (!isNaN(sold) ? '<span class="status-pill status-sold">Sold</span>' : '<span class="status-pill status-open">Open</span>');
+      rowEl.classList.toggle('row-sold', !isTransferred && !isNaN(sold));
+    } else if(role === 'virtual'){
+      const sp = num(t.transferSoldPrice);
+      const pv = !isNaN(sp) ? sp - cost : null;
+      profitTd.textContent = profitHtml(pv);
+      profitTd.className = profitClass(pv);
+      statusTd.innerHTML = !isNaN(sp) ? '<span class="status-pill status-sold">Sold</span>' : '<span class="status-pill status-open">Open</span>';
+      rowEl.classList.toggle('row-sold', !isNaN(sp));
+      rowEl.classList.toggle('game-sold', !isNaN(sp));
+      const c = rowEl.querySelector('.readonly-cost');
+      if(c) c.textContent = money(cost);
+    }
+  });
+}
+
+// Push a value into every rendered input for (key, field) except the one being typed in.
+function syncFieldDom(key, field, value){
+  document.querySelectorAll(`tr[data-key="${key}"] [data-field="${field}"]`).forEach(el=>{
+    if(document.activeElement !== el){ el.value = value; el._committed = value; }
+  });
+}
+
+function updateGameSoldShading(gi){
+  const t1 = data[keyFor(gi, SEATS[0])];
+  const t2 = data[keyFor(gi, SEATS[1])];
+  const relevant = [];
+  if(t1.transferTo === '') relevant.push(!isNaN(num(t1.sold)));
+  if(t2.transferTo === '') relevant.push(!isNaN(num(t2.sold)));
+  const fullySold = relevant.length > 0 && relevant.every(Boolean);
+  SEATS.forEach(s=>{
+    document.querySelectorAll(`tr[data-key="${keyFor(gi,s)}"][data-role="primary"]`).forEach(r=>r.classList.toggle('game-sold', fullySold));
+  });
+}
+
+const FIELD_LABELS = {
+  purchase:'Purchase $', marketUsd:'Market USD', market:'Market CAD', tmListed:'TM Listed',
+  sold:'Sold $', soldTo:'Sold To', transferTo:'Transfer To', transferFee:'Transfer / Extra $',
+  transferSoldPrice:'Sold $', transferSoldTo:'Sold To', tier:'Tier'
+};
+
+function cadFromUsd(usd){
+  const u = num(usd);
+  if(isNaN(u) || !fx.rate) return null;
+  return (u * fx.rate).toFixed(2);
+}
+
+/*
+  Wires up a number input so that:
+   - the first keystroke of an edit takes an undo snapshot,
+   - values save live as you type (profit/stats update immediately),
+   - if the edit ends with a previously-filled value now empty, a confirm pops up;
+     Cancel puts everything back exactly as it was.
+  opts.apply(value) writes into data and returns a list of {key, field, value}
+  to push into other rendered inputs (mirror seat, CAD, etc.).
+*/
+function bindNumberInput(el, opts){
+  el._committed = el.value;
+  el._pushed = false;
+  el.addEventListener('input', ()=>{
+    if(locked) return;
+    if(!el._pushed){ pushUndo(opts.label()); el._pushed = true; if(opts.onBegin) opts.onBegin(); }
+    const syncs = opts.apply(el.value) || [];
+    syncs.forEach(s=>syncFieldDom(s.key, s.field, s.value));
+    scheduleSave();
+    (opts.refreshKeys ? opts.refreshKeys() : []).forEach(refreshComputedForKey);
+    if(opts.after) opts.after();
+    renderStats();
+    resetIdleTimer();
+  });
+  el.addEventListener('change', ()=>{
+    const before = el._committed;
+    const after = el.value;
+    el._pushed = false;
+    if(!isBlank(before) && isBlank(after)){
+      openConfirmModal(
+        opts.clearMessage(before),
+        ()=>{ el._committed = ''; toast('Cleared ' + opts.label().replace(/^Edit /,''), { label:'Undo', fn:undo }); },
+        'Clear this value?',
+        { okLabel:'Yes, clear it', onCancel: ()=>{ discardLastEdit(); toast('Kept the original value.'); } }
+      );
+    } else {
+      el._committed = after;
+    }
+  });
+}
+
+// Select change with confirm-before-clearing. apply() does the data write.
+function bindSelect(el, opts){
+  el.addEventListener('change', ()=>{
+    if(locked) return;
+    const before = opts.current();
+    const after = el.value;
+    const doApply = ()=>{
+      pushUndo(opts.label(before, after));
+      opts.apply(after);
+      scheduleSave();
+      resetIdleTimer();
+    };
+    const warn = opts.warn ? opts.warn(before, after) : (!isBlank(before) && isBlank(after) ? opts.clearMessage(before) : null);
+    if(warn){
+      openConfirmModal(warn, doApply, opts.warnTitle || 'Are you sure?', {
+        okLabel: opts.warnOk || 'Yes, change it',
+        onCancel: ()=>{ el.value = before; }
+      });
+    } else {
+      doApply();
+    }
+  });
+}
+
+function primaryRow(gi, s, nextGi){
+  const key = keyFor(gi,s);
+  const t = data[key];
+  const tr = document.createElement('tr');
+  tr.dataset.key = key;
+  tr.dataset.role = 'primary';
+  tr.dataset.gi = gi;
+  if(s === SEATS[0]) tr.classList.add('game-start');
+  if(gi === nextGi) tr.classList.add('next-game');
+
+  const [date, opp] = GAMES[gi];
+  const isSeat1 = s === SEATS[0];
+  const partnerKey = keyFor(gi, SEATS[1]);
+  const where = `Seat ${s}, ${shortGame(gi)}`;
+  const mirrorNote = isSeat1 ? '\n\nSeat 102 mirrors Seat 101, so it will be cleared too.' : '';
+  const isTransferred = t.transferTo !== '';
+  const cost = effectiveCost(t);
+  const sold = num(t.sold);
+  const pv = (!isTransferred && !isNaN(sold)) ? sold - cost : null;
+  if(!isTransferred && !isNaN(sold)) tr.classList.add('row-sold');
+
+  const statusHtml = isTransferred ? '<span class="status-pill status-transferred">Transferred</span>'
+    : (!isNaN(sold) ? '<span class="status-pill status-sold">Sold</span>' : '<span class="status-pill status-open">Open</span>');
+
+  const soldCellHtml = isTransferred
+    ? `<td class="readonly-note">Moved</td>`
+    : `<td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="sold" value="${escapeHtml(t.sold)}" placeholder="0.00"></td>`;
+  const soldToCellHtml = isTransferred
+    ? `<td class="readonly-note">See destination row</td>`
+    : `<td><select class="sold-select" data-field="soldTo"><option value="">Choose…</option>${BUYERS.map(b=>`<option value="${b}" ${t.soldTo===b?'selected':''}>${b}</option>`).join('')}</select></td>`;
+
+  tr.innerHTML = `
+    <td class="c-date date-cell">${isSeat1 ? `${date.replace(/, \d{4}$/,'')}<span class="gtime">${GAME_TIMES[gi]||''}</span>` : ''}</td>
+    <td class="c-opp opp" title="${escapeHtml(opp)}">${isSeat1 ? escapeHtml(opp) : ''}</td>
+    <td class="c-seat"><span class="seat-badge">${s}</span></td>
+    <td>
+      <select class="tier-select" data-field="tier">
+        <option value="">—</option>
+        ${Object.entries(TIERS).map(([k,v])=>`<option value="${k}" ${t.tier===k?'selected':''}>${v.label}</option>`).join('')}
+      </select>
+    </td>
+    <td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="purchase" value="${escapeHtml(t.purchase)}" placeholder="0.00"></td>
+    <td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="marketUsd" value="${escapeHtml(t.marketUsd || '')}" placeholder="US$"></td>
+    <td><input type="number" step="0.01" inputmode="decimal" class="num-input cad-input" data-field="market" value="${escapeHtml(t.market)}" placeholder="C$" title="${!isBlank(t.marketUsd) ? 'From US$' + escapeHtml(t.marketUsd) : 'Type USD to auto-fill, or enter CAD directly'}"></td>
+    <td class="tm-cell"><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="tmListed" value="${escapeHtml(t.tmListed || '')}" placeholder="not listed"><button type="button" class="btn-copy-market" data-action="copy-market" title="Copy Market CAD into TM Listed">&#8592;</button></td>
+    ${soldCellHtml}
+    ${soldToCellHtml}
+    <td>
+      <select class="transfer-select" data-field="transferTo">
+        <option value="">Not transferred</option>
+        ${GAMES.map((g2,gi2)=> gi2===gi ? '' : `<option value="${gi2}" ${String(t.transferTo)===String(gi2)?'selected':''}>${escapeHtml(shortGame(gi2))}</option>`).join('')}
+      </select>
+    </td>
+    <td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="transferFee" value="${escapeHtml(t.transferFee)}" placeholder="0.00" title="Extra paid for this ticket — a transfer to another game, or an upgrade/exchange for this same game. Added to cost."></td>
+    <td class="${profitClass(pv)}">${profitHtml(pv)}</td>
+    <td class="status-cell">${statusHtml}</td>
+    <td class="actions-cell">${isSeat1 ? `<button class="btn-reset-game" data-action="reset-game" type="button" title="Reset this game">&#10227;</button>` : ''}</td>
+  `;
+
+  // Seat 101 edits copy onto Seat 102.
+  function mirror(field, value){
+    if(!isSeat1) return [];
+    data[partnerKey][field] = value;
+    return [{ key:partnerKey, field, value }];
+  }
+  const refreshKeys = ()=> isSeat1 ? [key, partnerKey] : [key];
+
+  // Plain number fields
+  ['purchase','tmListed','sold','transferFee'].forEach(field=>{
+    const el = tr.querySelector(`[data-field="${field}"]`);
+    if(!el) return;
+    bindNumberInput(el, {
+      label: ()=> `Edit ${FIELD_LABELS[field]} · ${where}`,
+      apply: (v)=>{ t[field] = v; return [{key, field, value:v}, ...mirror(field, v)]; },
+      refreshKeys,
+      after: ()=>{ if(field === 'sold') updateGameSoldShading(gi); },
+      clearMessage: (old)=> `Clear ${FIELD_LABELS[field]} ($${old}) on ${where}?${mirrorNote}`
+    });
+  });
+
+  // Market USD -> auto Market CAD
+  const usdEl = tr.querySelector('[data-field="marketUsd"]');
+  const cadEl = tr.querySelector('[data-field="market"]');
+  let cadAtStart = t.market, usdAtStart = t.marketUsd;
+  bindNumberInput(usdEl, {
+    label: ()=> `Edit Market USD · ${where}`,
+    onBegin: ()=>{ cadAtStart = t.market; usdAtStart = t.marketUsd; },
+    apply: (v)=>{
+      t.marketUsd = v;
+      let cad;
+      if(isBlank(v)) cad = isBlank(usdAtStart) ? cadAtStart : '';
+      else { cad = cadFromUsd(v); if(cad === null) cad = t.market; }
+      t.market = cad;
+      cadEl.value = cad; cadEl._committed = cad;
+      cadEl.title = isBlank(v) ? 'Type USD to auto-fill, or enter CAD directly' : ('From US$' + v + ' @ ' + (fx.rate||'?'));
+      return [{key, field:'market', value:cad}, ...mirror('marketUsd', v), ...mirror('market', cad)];
+    },
+    refreshKeys,
+    clearMessage: (old)=> `Clear Market USD (US$${old}) on ${where}? Market CAD will be cleared with it.${mirrorNote}`
+  });
+  bindNumberInput(cadEl, {
+    label: ()=> `Edit Market CAD · ${where}`,
+    apply: (v)=>{ t.market = v; return [{key, field:'market', value:v}, ...mirror('market', v)]; },
+    refreshKeys,
+    clearMessage: (old)=> `Clear Market CAD ($${old}) on ${where}?${mirrorNote}`
+  });
+  if(!fx.rate){
+    usdEl.addEventListener('focus', ()=>{ if(!fx.rate) toast('No USD→CAD rate yet — enter one in the rate box up top so CAD can auto-fill.'); });
+  }
+
+  // Tier (auto-sets purchase price)
+  bindSelect(tr.querySelector('[data-field="tier"]'), {
+    current: ()=> t.tier,
+    label: (b,a)=> `Change tier ${TIERS[b]?TIERS[b].label:'—'} → ${TIERS[a]?TIERS[a].label:'—'} · ${where}`,
+    warn: (b,a)=>{
+      if(!isBlank(b) && isBlank(a)) return `Clear the tier on ${where}?${mirrorNote}`;
+      const newPrice = TIERS[a] && TIERS[a].price != null ? TIERS[a].price.toFixed(2) : null;
+      const oldTierPrice = TIERS[b] && TIERS[b].price != null ? TIERS[b].price.toFixed(2) : null;
+      if(newPrice && !isBlank(t.purchase) && t.purchase !== newPrice && t.purchase !== oldTierPrice){
+        return `Changing to ${TIERS[a].label} replaces your custom Purchase $${t.purchase} with $${newPrice} on ${where}.` + (isSeat1 ? '\n\nSeat 102 gets the same change.' : '');
+      }
+      return null;
+    },
+    apply: (a)=>{
+      t.tier = a;
+      if(a && TIERS[a] && TIERS[a].price != null) t.purchase = TIERS[a].price.toFixed(2);
+      mirror('tier', t.tier); mirror('purchase', t.purchase);
+      renderAll();
+    }
+  });
+
+  const soldToEl = tr.querySelector('[data-field="soldTo"]');
+  if(soldToEl){
+    bindSelect(soldToEl, {
+      current: ()=> t.soldTo,
+      label: (b,a)=> `Sold To ${b||'—'} → ${a||'—'} · ${where}`,
+      clearMessage: (b)=> `Remove buyer "${b}" from ${where}?${mirrorNote}`,
+      warnOk:'Yes, remove',
+      apply: (a)=>{
+        t.soldTo = a;
+        mirror('soldTo', a).forEach(x=>syncFieldDom(x.key, x.field, x.value));
+        refreshKeys().forEach(refreshComputedForKey);
+        renderStats();
+      }
+    });
+  }
+
+  bindSelect(tr.querySelector('[data-field="transferTo"]'), {
+    current: ()=> t.transferTo,
+    label: (b,a)=> isBlank(a) ? `Undo transfer · ${where}` : `Transfer → ${shortGame(parseInt(a,10))} · ${where}`,
+    warnTitle:'Change transfer?',
+    warn: (b,a)=>{
+      if(!isBlank(b) && isBlank(a)){
+        const hadSale = !isBlank(t.transferSoldPrice);
+        return `Move ${where} back so it's no longer transferred to ${shortGame(parseInt(b,10))}?` +
+          (hadSale ? `\n\nThe sale recorded at the destination ($${t.transferSoldPrice}${t.transferSoldTo? ' to '+t.transferSoldTo:''}) will stop counting.` : '') +
+          `\n\nTransfer / Extra $ stays as-is — clear it separately if you got it back.` + (isSeat1 ? '\n\nSeat 102 changes too.' : '');
+      }
+      if(!isBlank(b) && !isBlank(a)){
+        return `Re-point ${where} from ${shortGame(parseInt(b,10))} to ${shortGame(parseInt(a,10))}?` + (isSeat1 ? '\n\nSeat 102 changes too.' : '');
+      }
+      return null;
+    },
+    apply: (a)=>{
+      t.transferTo = a;
+      if(a !== ''){
+        const destTierKey = GAME_TIERS[parseInt(a,10)];
+        const destPrice = destTierKey && TIERS[destTierKey] ? TIERS[destTierKey].price : null;
+        const originPrice = num(t.purchase);
+        if(destPrice !== null && !isNaN(originPrice) && isBlank(t.transferFee)){
+          t.transferFee = (destPrice - originPrice).toFixed(2);
+        }
+      }
+      mirror('transferTo', t.transferTo);
+      mirror('transferFee', t.transferFee);
+      renderAll();
+    }
+  });
+
+  tr.querySelector('[data-action="copy-market"]').addEventListener('click', ()=>{
+    if(locked) return;
+    const mv = String(t.market || '').trim();
+    if(mv === ''){ toast('No Market CAD on this ticket to copy.'); return; }
+    const doCopy = ()=>{
+      pushUndo(`Copy Market → TM · ${where}`);
+      t.tmListed = mv;
+      syncFieldDom(key, 'tmListed', mv);
+      mirror('tmListed', mv).forEach(x=>syncFieldDom(x.key, x.field, x.value));
+      scheduleSave();
+      renderStats();
+      const b = tr.querySelector('[data-action="copy-market"]');
+      b.classList.add('copied'); setTimeout(()=>b.classList.remove('copied'), 700);
+    };
+    const cur = String(t.tmListed || '').trim();
+    if(cur !== '' && cur !== mv){
+      openConfirmModal(`Replace TM Listed $${cur} with Market CAD $${mv} on ${where}?` + (isSeat1 ? '\n\nSeat 102 gets the same change.' : ''), doCopy, 'Overwrite TM price?', { okLabel:'Replace' });
+    } else doCopy();
+  });
+
+  const resetGameBtn = tr.querySelector('[data-action="reset-game"]');
+  if(resetGameBtn){
+    resetGameBtn.addEventListener('click', ()=>{
+      if(locked) return;
+      openConfirmModal(
+        `This clears Market USD/CAD, TM Listed, Sold $, Sold To, any transfer and Transfer / Extra $ for BOTH seats on ${gameLabel(gi)}. Purchase price goes back to the tier price.\n\nYou can Undo this right after.`,
+        ()=>{
+          pushUndo(`Reset ${shortGame(gi)}`);
+          SEATS.forEach(seat=>{ data[keyFor(gi,seat)] = defaultTicket(gi); });
+          scheduleSave();
+          renderAll();
+          toast(`Reset ${shortGame(gi)}`, { label:'Undo', fn:undo });
+        },
+        `Reset ${GAMES[gi][1]}?`,
+        { okLabel:'Reset game' }
+      );
+    });
+  }
+  return tr;
+}
+
+// A transferred ticket gets a second line under the game it was moved TO.
+function virtualRow(originGi, originSeat, destGi){
+  const key = keyFor(originGi, originSeat);
+  const t = data[key];
+  const tr = document.createElement('tr');
+  tr.dataset.key = key;
+  tr.dataset.role = 'virtual';
+  tr.dataset.gi = destGi;
+  tr.classList.add('virtual-row');
+  const where = `Seat ${originSeat} (moved to ${shortGame(destGi)})`;
+  const [destDate, destOpp] = GAMES[destGi];
+  const cost = effectiveCost(t);
+  const sp = num(t.transferSoldPrice);
+  const pv = !isNaN(sp) ? sp - cost : null;
+  if(!isNaN(sp)) tr.classList.add('row-sold', 'game-sold');
+  const statusHtml = !isNaN(sp) ? '<span class="status-pill status-sold">Sold</span>' : '<span class="status-pill status-open">Open</span>';
+
+  tr.innerHTML = `
+    <td class="c-date date-cell">${destDate.replace(/, \d{4}$/,'')}<span class="gtime">${GAME_TIMES[destGi]||''}</span></td>
+    <td class="c-opp opp" title="${escapeHtml(destOpp)}">${escapeHtml(destOpp)}</td>
+    <td class="c-seat"><span class="seat-badge">${originSeat}</span><span class="in-tag">IN</span></td>
+    <td class="readonly-note">${TIERS[t.tier] ? TIERS[t.tier].label : '—'}</td>
+    <td class="readonly-note readonly-cost" title="Original purchase + Transfer / Extra $">${money(cost)}</td>
+    <td class="readonly-note">—</td>
+    <td class="readonly-note">—</td>
+    <td class="readonly-note">—</td>
+    <td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="transferSoldPrice" value="${escapeHtml(t.transferSoldPrice)}" placeholder="0.00"></td>
+    <td>
+      <select class="sold-select" data-field="transferSoldTo">
+        <option value="">Choose…</option>
+        ${BUYERS.map(b=>`<option value="${b}" ${t.transferSoldTo===b?'selected':''}>${b}</option>`).join('')}
+      </select>
+    </td>
+    <td><div class="from-note">↳ from ${escapeHtml(shortGame(originGi))}</div></td>
+    <td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="transferFee" value="${escapeHtml(t.transferFee)}" placeholder="0.00" title="What you paid to move this ticket (plus any extra). Added to cost."></td>
+    <td class="${profitClass(pv)}">${profitHtml(pv)}</td>
+    <td class="status-cell">${statusHtml}</td>
+    <td class="actions-cell"></td>
+  `;
+
+  ['transferSoldPrice','transferFee'].forEach(field=>{
+    const el = tr.querySelector(`[data-field="${field}"]`);
+    bindNumberInput(el, {
+      label: ()=> `Edit ${FIELD_LABELS[field]} · ${where}`,
+      apply: (v)=>{ t[field] = v; return [{key, field, value:v}]; },
+      refreshKeys: ()=> [key],
+      clearMessage: (old)=> `Clear ${FIELD_LABELS[field]} ($${old}) on ${where}?`
+    });
+  });
+
+  bindSelect(tr.querySelector('[data-field="transferSoldTo"]'), {
+    current: ()=> t.transferSoldTo,
+    label: (b,a)=> `Sold To ${b||'—'} → ${a||'—'} · ${where}`,
+    clearMessage: (b)=> `Remove buyer "${b}" from ${where}?`,
+    warnOk:'Yes, remove',
+    apply: (a)=>{ t.transferSoldTo = a; refreshComputedForKey(key); renderStats(); }
+  });
+  return tr;
+}
+
+function buildIncomingMap(){
+  const map = {};
+  GAMES.forEach((g,gi)=> map[gi] = []);
+  GAMES.forEach((g,gi)=>{
+    SEATS.forEach(s=>{
+      const t = data[keyFor(gi,s)];
+      if(t.transferTo !== ''){
+        const destIdx = parseInt(t.transferTo,10);
+        if(map[destIdx]) map[destIdx].push({originGi:gi, originSeat:s});
+      }
+    });
+  });
+  return map;
+}
+
+function gameDate(gi){ return new Date(GAMES[gi][0].replace(/^\w+, /,'') + ' 23:59'); }
+function nextGameIndex(){
+  const now = new Date();
+  for(let gi=0; gi<GAMES.length; gi++){ if(gameDate(gi) >= now) return gi; }
+  return -1;
+}
+
+function renderTable(opts){
+  opts = opts || {};
+  const scrollBox = document.getElementById('tableScroll');
+  const top = scrollBox.scrollTop, left = scrollBox.scrollLeft;
+
+  const search = document.getElementById('searchBox').value.trim().toLowerCase();
+  const statusFilter = document.getElementById('statusFilter').value;
+  const buyerFilter = document.getElementById('buyerFilter').value;
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  const incomingMap = buildIncomingMap();
+  const nextGi = nextGameIndex();
+  const frag = document.createDocumentFragment();
+
+  GAMES.forEach((g,gi)=>{
+    const [, opp] = g;
+    const matchesSearch = !search || opp.toLowerCase().includes(search);
+    const gameRows = [];
+    const soldFlags = [];
+    if(matchesSearch){
+      SEATS.forEach(s=>{
+        const t = data[keyFor(gi,s)];
+        if(t.transferTo !== ''){
+          if(statusFilter === 'all' && buyerFilter === 'all'){
+            const row = primaryRow(gi, s, nextGi);
+            frag.appendChild(row); gameRows.push(row);
+          }
+        } else {
+          const isSold = !isNaN(num(t.sold));
+          if(statusFilter === 'sold' && !isSold) return;
+          if(statusFilter === 'open' && isSold) return;
+          if(buyerFilter !== 'all' && t.soldTo !== buyerFilter) return;
+          const row = primaryRow(gi, s, nextGi);
+          frag.appendChild(row); gameRows.push(row);
+          soldFlags.push(isSold);
+        }
+      });
+    }
+    if(soldFlags.length > 0 && soldFlags.every(Boolean)) gameRows.forEach(r=>r.classList.add('game-sold'));
+
+    (incomingMap[gi] || []).forEach(inc=>{
+      const t = data[keyFor(inc.originGi, inc.originSeat)];
+      const originOpp = GAMES[inc.originGi][1].toLowerCase();
+      if(search && !opp.toLowerCase().includes(search) && !originOpp.includes(search)) return;
+      const isSold = !isNaN(num(t.transferSoldPrice));
+      if(statusFilter === 'sold' && !isSold) return;
+      if(statusFilter === 'open' && isSold) return;
+      if(buyerFilter !== 'all' && t.transferSoldTo !== buyerFilter) return;
+      frag.appendChild(virtualRow(inc.originGi, inc.originSeat, gi));
+    });
+  });
+  tbody.appendChild(frag);
+  applyLockToControls();
+
+  // Keep your place — only jump to the top when filters change.
+  if(opts.resetScroll){ scrollBox.scrollTop = 0; }
+  else { scrollBox.scrollTop = top; }
+  scrollBox.scrollLeft = left;
+}
+
+function renderAll(opts){ renderTable(opts); renderStats(); }
+
+function jumpToNextGame(){
+  const gi = nextGameIndex();
+  const row = document.querySelector(`#tableBody tr[data-gi="${gi}"]`);
+  const box = document.getElementById('tableScroll');
+  if(!row){ toast('No upcoming game in the current filter.'); return; }
+  const headH = box.querySelector('thead').offsetHeight;
+  box.scrollTo({ top: row.offsetTop - headH, behavior:'smooth' });
+}
+
+// ---------- FX ----------
+function renderFx(){
+  const input = document.getElementById('fxInput');
+  if(document.activeElement !== input) input.value = fx.rate ? Number(fx.rate).toFixed(4) : '';
+  const src = document.getElementById('fxSource');
+  if(!fx.rate){ src.textContent = 'no rate'; src.className = 'fx-src warn'; }
+  else if(fx.manual){ src.textContent = 'manual'; src.className = 'fx-src warn'; }
+  else { src.textContent = (fx.source === 'live' ? 'live ' : 'saved ') + (fx.date || ''); src.className = 'fx-src'; }
+}
+async function fetchLiveRate(){
+  const sources = [
+    async ()=>{ const r = await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=CAD'); const j = await r.json(); return { rate:j.rates.CAD, date:j.date }; },
+    async ()=>{ const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=CAD'); const j = await r.json(); return { rate:j.rates.CAD, date:j.date }; },
+    async ()=>{ const r = await fetch('https://open.er-api.com/v6/latest/USD'); const j = await r.json(); return { rate:j.rates.CAD, date:(j.time_last_update_utc||'').slice(5,16) }; },
+  ];
+  for(const src of sources){
+    try{
+      const res = await src();
+      if(res && res.rate && !isNaN(res.rate)) return res;
+    }catch(e){ /* try next */ }
+  }
+  return null;
+}
+async function refreshFx(userInitiated){
+  const res = await fetchLiveRate();
+  if(res){
+    fx.rate = Number(res.rate);
+    fx.date = res.date || '';
+    fx.source = 'live';
+    fx.manual = false;
+    renderFx();
+    if(userInitiated){
+      scheduleSave();
+      toast(`Rate updated: 1 USD = ${fx.rate.toFixed(4)} CAD. New USD entries use it — "USD → CAD (all)" re-converts existing rows.`);
+    }
+  } else {
+    renderFx();
+    if(userInitiated) toast('Couldn\'t reach the exchange-rate service. Type the rate in manually.');
+  }
+}
+
+// ---------- CSV ----------
+function exportCSV(){
+  const rows = [['Date','Time','Opponent','Seat','Tier','Purchase','MarketUSD','MarketCAD','TMListedCAD','SoldAtOriginalGame','SoldToAtOriginalGame','TransferTo','TransferOrExtraCost','TransferSoldPrice','TransferSoldTo','EffectiveCost','FinalSalePrice','Profit']];
+  GAMES.forEach((g,gi)=>{
+    SEATS.forEach(s=>{
+      const t = data[keyFor(gi,s)];
+      const cost = effectiveCost(t);
+      const final = ticketFinalSale(t);
+      const profit = !isNaN(final.price) ? (final.price-cost).toFixed(2) : '';
+      const toLabel = t.transferTo !== '' ? gameLabel(parseInt(t.transferTo,10)) : '';
+      rows.push([g[0], GAME_TIMES[gi]||'', g[1], s, t.tier||'', t.purchase||'', t.marketUsd||'', t.market||'', t.tmListed||'',
+        t.sold||'', t.soldTo||'', toLabel, t.transferFee||'', t.transferSoldPrice||'', t.transferSoldTo||'',
+        cost.toFixed(2), isNaN(final.price)?'':final.price, profit]);
+    });
+  });
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'canucks-sec101-row16-tickets.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- INIT ----------
+let ownerModeInitialized = false;
+let ownerListenersAttached = false;
+
+async function initOwnerMode(){
+  if(!ownerModeInitialized){
+    ownerModeInitialized = true;
+    buildLegend();
+    buildBuyerFilterOptions();
+    initConfirmModal();
+  }
+  setLocked(true);
+  setSaveStatus('saving', 'Loading…');
+  await loadData();
+  setSaveStatus('', 'Loaded');
+  renderFx();
+  renderAll({ resetScroll:true });
+  await syncPublicListingNow();
+  if(!fx.manual) refreshFx(false).then(()=>{ if(fx.source === 'live') { /* keep saved rate fresh */ } });
+
+  const listingUrl = location.origin + location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/listing.html';
+  document.getElementById('customerLinkInput').value = listingUrl;
+
+  try{ if(localStorage.getItem('ledgerDetailsOpen') === '1') toggleSummary(true); }catch(e){}
+  setTimeout(jumpToNextGame, 50);
+
+  if(ownerListenersAttached) return;
+  ownerListenersAttached = true;
+
+  document.getElementById('lockBtn').addEventListener('click', ()=>{
+    setLocked(!locked);
+    toast(locked ? 'Locked. Nothing can be changed until you unlock.' : 'Editing unlocked — auto-locks after 10 min idle.');
+  });
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.getElementById('redoBtn').addEventListener('click', redo);
+
+  document.getElementById('searchBox').addEventListener('input', ()=>renderTable({ resetScroll:true }));
+  document.getElementById('statusFilter').addEventListener('change', ()=>renderTable({ resetScroll:true }));
+  document.getElementById('buyerFilter').addEventListener('change', ()=>renderTable({ resetScroll:true }));
+  document.getElementById('jumpNextBtn').addEventListener('click', jumpToNextGame);
+  document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('summaryToggle').addEventListener('click', ()=>toggleSummary());
+
+  document.getElementById('tableBody').addEventListener('change', (e)=>{ if(e.target.tagName === 'SELECT') setTimeout(markEmptySelects, 0); });
+
+  // Clicking a field while locked explains why nothing happens.
+  document.getElementById('tableBody').addEventListener('click', (e)=>{
+    if(!locked) return;
+    const td = e.target.closest('td');
+    if(td && td.querySelector('input,select,button')) toast('Locked — click "Unlock to edit" at the top first.');
+  });
+
+  // FX controls
+  const fxInput = document.getElementById('fxInput');
+  fxInput.addEventListener('change', ()=>{
+    if(locked) return;
+    const v = num(fxInput.value);
+    if(isNaN(v) || v <= 0){
+      toast('Rate must be a positive number.');
+      renderFx();
+      return;
+    }
+    fx.rate = v; fx.manual = true; fx.source = 'manual'; fx.date = '';
+    renderFx();
+    scheduleSave();
+    toast(`Using manual rate ${v.toFixed(4)}. Click ↻ to go back to the live rate.`);
+  });
+  document.getElementById('fxRefreshBtn').addEventListener('click', ()=>{ if(!locked) refreshFx(true); });
+
+  document.getElementById('recalcCadBtn').addEventListener('click', ()=>{
+    if(locked) return;
+    if(!fx.rate){ toast('Set a USD→CAD rate first.'); return; }
+    let n = 0;
+    Object.keys(data).forEach(k=>{
+      const t = data[k];
+      const cad = cadFromUsd(t.marketUsd);
+      if(cad !== null && cad !== t.market) n++;
+    });
+    if(n === 0){ toast('Every ticket with a Market USD already matches the current rate.'); return; }
+    openConfirmModal(
+      `Recalculate Market CAD on ${n} ticket${n===1?'':'s'} from their Market USD at 1 USD = ${Number(fx.rate).toFixed(4)} CAD? Their current CAD values will be replaced.\n\nYou can Undo this right after.`,
+      ()=>{
+        pushUndo(`Recalc CAD on ${n} tickets`);
+        Object.keys(data).forEach(k=>{
+          const t = data[k];
+          const cad = cadFromUsd(t.marketUsd);
+          if(cad !== null) t.market = cad;
+        });
+        scheduleSave(); renderAll();
+        toast(`Updated ${n} Market CAD value${n===1?'':'s'}.`, { label:'Undo', fn:undo });
+      },
+      'Re-convert USD → CAD?',
+      { okLabel:'Recalculate' }
+    );
+  });
+
+  document.getElementById('copyAllMarketBtn').addEventListener('click', ()=>{
+    if(locked) return;
+    let n = 0, overwrites = 0;
+    GAMES.forEach((g,gi)=>{
+      SEATS.forEach(s=>{
+        const t = data[keyFor(gi,s)];
+        if(t.transferTo !== '' || !isNaN(ticketFinalSale(t).price)) return;
+        const mv = String(t.market || '').trim();
+        if(mv === '' || t.tmListed === mv) return;
+        n++;
+        if(!isBlank(t.tmListed)) overwrites++;
+      });
+    });
+    if(n === 0){
+      openConfirmModal('Every unsold ticket with a Market CAD already has a matching TM Listed price.', ()=>{}, 'Nothing to copy', { okLabel:'OK', hideCancel:true, safe:true });
+      return;
+    }
+    openConfirmModal(
+      `Copy Market CAD into TM Listed on ${n} unsold ticket${n===1?'':'s'}.` + (overwrites ? ` ${overwrites} of them already have a different TM price that will be replaced.` : '') + `\n\nSold, transferred and no-market tickets are skipped. You can Undo this right after.`,
+      ()=>{
+        pushUndo(`Market → TM on ${n} tickets`);
+        GAMES.forEach((g,gi)=>{
+          SEATS.forEach(s=>{
+            const t = data[keyFor(gi,s)];
+            if(t.transferTo !== '' || !isNaN(ticketFinalSale(t).price)) return;
+            const mv = String(t.market || '').trim();
+            if(mv === '') return;
+            t.tmListed = mv;
+          });
+        });
+        scheduleSave(); renderAll();
+        toast(`Copied to ${n} ticket${n===1?'':'s'}.`, { label:'Undo', fn:undo });
+      },
+      `Copy market price to ${n} ticket${n===1?'':'s'}?`,
+      { okLabel:'Copy' }
+    );
+  });
+
+  document.getElementById('customerLinkCopyBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('customerLinkInput');
+    input.select();
+    try{ await navigator.clipboard.writeText(input.value); }catch(e){ document.execCommand('copy'); }
+    const btn = document.getElementById('customerLinkCopyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(()=>{ btn.textContent = 'Copy'; }, 1800);
+  });
+
+  // Reset all: two-step confirm, and it can be undone.
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    if(locked) return;
+    const total = GAMES.length * SEATS.length;
+    openConfirmModal(
+      `This wipes market prices, TM prices, sales, buyers, transfers and extra costs on all ${total} tickets across ${GAMES.length} games.`,
+      ()=>{
+        openConfirmModal(
+          'Last check — really reset EVERYTHING? (Undo works until you reload the page.)',
+          async ()=>{
+            pushUndo('Reset all tickets');
+            GAMES.forEach((g,gi)=>SEATS.forEach(s=>{ data[keyFor(gi,s)] = defaultTicket(gi); }));
+            renderAll();
+            await flushSave();
+            toast('All tickets reset.', { label:'Undo', fn:undo });
+          },
+          'Are you absolutely sure?',
+          { okLabel:'Reset everything' }
+        );
+      },
+      `Reset all ${total} tickets?`,
+      { okLabel:'Continue' }
+    );
+  });
+
+  document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+    if(savePending) await flushSave();
+    signOut(auth);
+  });
+
+  // Keyboard: Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo, Esc cancels a dialog.
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && isModalOpen()){ resolveConfirm(false); return; }
+    const inField = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA');
+    const mod = e.ctrlKey || e.metaKey;
+    if(!mod || inField || isModalOpen()) return;
+    const k = e.key.toLowerCase();
+    if(k === 'z' && !e.shiftKey){ e.preventDefault(); if(locked) toast('Unlock to undo.'); else undo(); }
+    else if((k === 'z' && e.shiftKey) || k === 'y'){ e.preventDefault(); if(!locked) redo(); }
+  });
+  ['pointerdown','keydown','input'].forEach(ev=>document.addEventListener(ev, resetIdleTimer, { passive:true }));
+
+  window.addEventListener('beforeunload', (e)=>{
+    if(savePending){ e.preventDefault(); e.returnValue = ''; }
+  });
+}
+
+function toggleSummary(force){
+  const panel = document.getElementById('summaryPanel');
+  const open = force !== undefined ? force : panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !open);
+  document.getElementById('summaryToggle').textContent = open ? 'Details ▴' : 'Details ▾';
+  try{ localStorage.setItem('ledgerDetailsOpen', open ? '1' : '0'); }catch(e){}
+}
+
+// ---------- AUTH ----------
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+loginForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  loginError.textContent = '';
+  try{
+    await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value);
+  }catch(err){
+    loginError.textContent = 'Sign-in failed: ' + err.message;
+  }
+});
+
+onAuthStateChanged(auth, async (user)=>{
+  const loginOverlay = document.getElementById('loginOverlay');
+  const app = document.getElementById('ownerApp');
+  if(user){
+    loginOverlay.classList.add('hidden');
+    app.classList.remove('hidden');
+    await initOwnerMode();
+  } else {
+    loginOverlay.classList.remove('hidden');
+    app.classList.add('hidden');
+  }
+});
+</script>
+</body>
+</html>
