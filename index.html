@@ -38,6 +38,7 @@
     overflow:hidden;
   }
   .hidden{ display:none !important; }
+  .mobile-only{ display:none !important; }
 
   /* ===== APP SHELL: uses the full screen, table fills whatever is left ===== */
   #ownerApp{
@@ -340,10 +341,68 @@
   .toast button{ background:transparent; border:1px solid var(--line); color:var(--gold); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:12px; }
 
   @media(max-width:700px){
-    :root{ --w-date:92px; --w-opp:120px; --w-seat:74px; }
-    .brand h1{ font-size:16px; }
+    .mobile-only{ display:inline-flex !important; }
+    .topbar{ padding:7px 10px; gap:5px; }
+    .topbar .bar-row:first-child{ gap:6px; }
+    .brand{ margin-right:auto; }
+    .brand h1{ font-size:15px; }
     .brand .season{ display:none; }
-    .table-scroll{ margin:6px; }
+    .save-status{ display:none; }
+    body.mobile-games-only #lockBtn,
+    body.mobile-games-only #undoBtn,
+    body.mobile-games-only #redoBtn{ display:none; }
+    .mobile-header-toggle{ margin-left:auto; padding:6px 9px; font-size:11px; }
+    body.mobile-games-only .topbar .bar-row:not(:first-child),
+    body.mobile-games-only .summary-panel{ display:none !important; }
+    .table-scroll{ margin:5px; border:0; border-radius:0; scrollbar-width:none; }
+    .table-scroll::-webkit-scrollbar{ display:none; }
+    table{ display:block; width:100%; min-width:0; }
+    thead{ display:none; }
+    tbody{ display:block; padding:0 3px 6px; }
+    tbody tr{
+      display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:0 8px; margin:7px 0 10px; padding:7px 10px 8px;
+      border:1px solid var(--line); border-radius:10px;
+      background:var(--row-bg);
+    }
+    tbody tr.game-start{ border-top:3px solid rgba(0,132,61,.7); }
+    tbody tr.next-game{ border-color:var(--green-hi); }
+    tbody td{
+      display:flex; flex-direction:column; justify-content:center;
+      min-width:0; min-height:46px; padding:4px 2px;
+      border-bottom:1px solid var(--line); background:transparent;
+      white-space:normal; font-size:12px;
+    }
+    tbody tr:hover td{ background-image:none; }
+    tbody tr.game-start td{ border-top:0; }
+    tbody td::before{
+      content:attr(data-mobile-label); display:block; margin-bottom:4px;
+      color:var(--text-dim); font-family:'Space Mono',monospace;
+      font-size:9px; letter-spacing:.01em; text-transform:uppercase;
+    }
+    tbody td.c-date, tbody td.c-opp, tbody td.c-seat{
+      position:static; width:auto; min-width:0; max-width:none;
+      overflow:visible; text-overflow:clip; box-shadow:none; border-right:0;
+    }
+    tbody td.c-date{ grid-column:1; border:0; min-height:24px; font-size:11px; }
+    tbody td.c-opp{ grid-column:1 / -1; grid-row:1; min-height:32px; border:0; font-size:14px; }
+    tbody td.c-opp::before, tbody td.c-date::before{ display:none; }
+    tbody td.c-seat{ grid-column:2; grid-row:2; align-items:flex-end; border:0; min-height:24px; }
+    tbody td.c-seat::before{ display:none; }
+    .mobile-game-repeat{ display:inline; }
+    tbody td:nth-child(4){ grid-column:1 / -1; min-height:30px; }
+    tbody td:nth-child(4)::before{ display:inline; margin:0 5px 0 0; }
+    tbody td:nth-child(4){ flex-direction:row; justify-content:flex-start; align-items:center; }
+    tbody td:nth-child(5), tbody td:nth-child(7), tbody td:nth-child(8),
+    tbody td:nth-child(9), tbody td:nth-child(13){ font-weight:600; }
+    tbody td:nth-child(8){ color:var(--green-hi); }
+    tbody td:nth-child(14), tbody td:nth-child(15){ min-height:34px; border:0; }
+    tbody td input, tbody td select{ width:100%; min-width:0; max-width:100%; font-size:13px; }
+    tbody td .tier-select{ width:auto; }
+    tbody td .btn-copy-market{ display:none; }
+    tbody td.tm-cell{ white-space:normal; }
+    tbody td .from-note{ max-width:none; }
+    tbody td .readonly-cost{ min-width:0; }
   }
 </style>
 </head>
@@ -374,11 +433,12 @@
         </div>
       </div>
       <span class="save-status" id="saveStatus">Loaded</span>
+      <button class="btn secondary mobile-only mobile-header-toggle" id="mobileHeaderToggle" type="button" aria-expanded="true" aria-controls="headerControls summaryPanel">Games only</button>
       <button class="btn lock-btn" id="lockBtn" type="button">🔒 Locked · Unlock to edit</button>
       <button class="btn secondary edit-only" id="undoBtn" type="button" title="Undo (Ctrl+Z). History lasts until you reload the page." disabled>↶ Undo</button>
       <button class="btn secondary edit-only" id="redoBtn" type="button" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button>
     </div>
-    <div class="bar-row">
+    <div class="bar-row" id="headerControls">
       <input type="text" id="searchBox" class="search" placeholder="Search opponent…">
       <select id="statusFilter">
         <option value="all">All tickets</option>
@@ -400,7 +460,7 @@
       <button class="btn danger edit-only" id="resetBtn" type="button">Reset all</button>
       <button class="btn secondary" id="signOutBtn" type="button">Sign out</button>
     </div>
-    <div class="bar-row">
+    <div class="bar-row" id="headerStats">
       <div class="mini-stats" id="miniStats"></div>
       <button class="btn secondary summary-toggle" id="summaryToggle" type="button">Details ▾</button>
     </div>
@@ -1187,8 +1247,8 @@ function primaryRow(gi, s, nextGi){
     : `<td><select class="sold-select" data-field="soldTo"><option value="">Choose…</option>${BUYERS.map(b=>`<option value="${b}" ${t.soldTo===b?'selected':''}>${b}</option>`).join('')}</select></td>`;
 
   tr.innerHTML = `
-    <td class="c-date date-cell">${isSeat1 ? `${date.replace(/, \d{4}$/,'')}<span class="gtime">${GAME_TIMES[gi]||''}</span>` : ''}</td>
-    <td class="c-opp opp" title="${escapeHtml(opp)}">${isSeat1 ? escapeHtml(opp) : ''}</td>
+    <td class="c-date date-cell">${isSeat1 ? `${date.replace(/, \d{4}$/,'')}<span class="gtime">${GAME_TIMES[gi]||''}</span>` : `<span class="mobile-only mobile-game-repeat">${date.replace(/, \d{4}$/,'')} · ${GAME_TIMES[gi]||''}</span>`}</td>
+    <td class="c-opp opp" title="${escapeHtml(opp)}">${isSeat1 ? escapeHtml(opp) : `<span class="mobile-only mobile-game-repeat">${escapeHtml(opp)}</span>`}</td>
     <td class="c-seat"><span class="seat-badge">${s}</span></td>
     <td>
       <select class="tier-select" data-field="tier">
@@ -1509,6 +1569,7 @@ function renderTable(opts){
     });
   });
   tbody.appendChild(frag);
+  labelMobileCells();
   applyLockToControls();
 
   // Keep your place — only jump to the top when filters change.
@@ -1518,6 +1579,22 @@ function renderTable(opts){
 }
 
 function renderAll(opts){ renderTable(opts); renderStats(); }
+
+const MOBILE_LABELS = ['Date','Opponent','Seat','Tier','Purchase CAD','Market USD','Market CAD','TM Listed CAD','Sold CAD','Sold To','Transfer To','Transfer / Extra CAD','Profit CAD','Status','Reset'];
+function labelMobileCells(){
+  document.querySelectorAll('#tableBody tr').forEach(row=>{
+    [...row.children].forEach((cell, idx)=>cell.dataset.mobileLabel = MOBILE_LABELS[idx] || '');
+  });
+}
+function setMobileHeaderCollapsed(collapsed){
+  document.body.classList.toggle('mobile-games-only', collapsed);
+  const button = document.getElementById('mobileHeaderToggle');
+  document.getElementById('headerStats').setAttribute('aria-hidden', String(collapsed));
+  document.getElementById('headerControls').setAttribute('aria-hidden', String(collapsed));
+  button.textContent = collapsed ? 'Show controls' : 'Games only';
+  button.setAttribute('aria-expanded', String(!collapsed));
+  try{ localStorage.setItem('ledgerMobileGamesOnly', collapsed ? '1' : '0'); }catch(e){}
+}
 
 function jumpToNextGame(){
   const gi = nextGameIndex();
@@ -1610,6 +1687,7 @@ async function initOwnerMode(){
   setSaveStatus('', 'Loaded');
   renderFx();
   renderAll({ resetScroll:true });
+  try{ setMobileHeaderCollapsed(localStorage.getItem('ledgerMobileGamesOnly') === '1'); }catch(e){ setMobileHeaderCollapsed(false); }
   await syncPublicListingNow();
   if(!fx.manual) refreshFx(false).then(()=>{ if(fx.source === 'live') { /* keep saved rate fresh */ } });
 
@@ -1635,6 +1713,7 @@ async function initOwnerMode(){
   document.getElementById('jumpNextBtn').addEventListener('click', jumpToNextGame);
   document.getElementById('exportBtn').addEventListener('click', exportCSV);
   document.getElementById('summaryToggle').addEventListener('click', ()=>toggleSummary());
+  document.getElementById('mobileHeaderToggle').addEventListener('click', ()=>setMobileHeaderCollapsed(!document.body.classList.contains('mobile-games-only')));
 
   document.getElementById('tableBody').addEventListener('change', (e)=>{ if(e.target.tagName === 'SELECT') setTimeout(markEmptySelects, 0); });
 
