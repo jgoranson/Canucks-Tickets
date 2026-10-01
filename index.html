@@ -547,6 +547,7 @@
       <button class="btn secondary edit-only" id="copyAllMarketBtn" type="button" title="Fill TM Listed from Market CAD on every unsold ticket">Market CAD → TM (all)</button>
       <button class="btn secondary" id="exportBtn" type="button">Export CSV</button>
       <button class="btn danger edit-only" id="resetBtn" type="button">Reset all</button>
+      <button class="btn secondary" id="refreshDataBtn" type="button">Refresh data</button>
       <button class="btn secondary" id="signOutBtn" type="button">Sign out</button>
     </div>
     <div class="bar-row" id="headerStats">
@@ -736,7 +737,7 @@ function defaultTicket(gameIdx){
   const tierInfo = TIERS[tierKey];
   const purchase = (tierInfo && tierInfo.price != null) ? tierInfo.price.toFixed(2) : '';
   // market = Market CAD (what the public listing shows); marketUsd = Market USD input
-  return { tier:tierKey, purchase:purchase, marketUsd:'', market:'', tmListed:'', sold:'', soldTo:'', transferTo:'', transferFee:'', transferSoldPrice:'', transferSoldTo:'' };
+  return { tier:tierKey, purchase:purchase, marketUsd:'', market:'', tmListed:'', sold:'', soldTo:'', transferTo:'', transferFee:'', transferSoldPrice:'', transferSoldTo:'', transferLocation:'' };
 }
 
 function num(v){ return parseFloat(v); }
@@ -1453,6 +1454,14 @@ function primaryRow(gi, s, nextGi){
     });
   }
 
+  const transferCell = tr.querySelector('[data-field="transferTo"]').parentElement;
+  const locationEl = document.createElement('input');
+  locationEl.type = 'text'; locationEl.className = 'num-input'; locationEl.dataset.field = 'transferLocation';
+  locationEl.value = t.transferLocation || ''; locationEl.placeholder = 'New section, row, seat';
+  locationEl.title = 'Exact new seat after an exchange (this seat only)'; locationEl.style.width = '170px';
+  transferCell.appendChild(locationEl);
+  bindNumberInput(locationEl, {label:()=> `Edit exchange seat · ${where}`, apply:(v)=>{t.transferLocation=v;return [];}, refreshKeys, clearMessage:()=>`Clear exchange seat on ${where}?`});
+
   bindSelect(tr.querySelector('[data-field="transferTo"]'), {
     current: ()=> t.transferTo,
     label: (b,a)=> isBlank(a) ? `Undo transfer · ${where}` : `Transfer → ${shortGame(parseInt(a,10))} · ${where}`,
@@ -1546,7 +1555,7 @@ function virtualRow(originGi, originSeat, destGi){
   tr.innerHTML = `
     <td class="c-date date-cell">${destDate.replace(/, \d{4}$/,'')}<span class="gtime">${GAME_TIMES[destGi]||''}</span></td>
     <td class="c-opp opp" title="${escapeHtml(destOpp)}">${escapeHtml(destOpp)}</td>
-    <td class="c-seat"><span class="seat-badge">${originSeat}</span><span class="in-tag">IN</span></td>
+    <td class="c-seat"><span class="seat-badge">${escapeHtml(t.transferLocation || String(originSeat))}</span><span class="in-tag">IN</span></td>
     <td class="readonly-note">${TIERS[t.tier] ? TIERS[t.tier].label : '—'}</td>
     <td class="readonly-note readonly-cost" title="Original purchase + Transfer / Extra $">${money(cost)}</td>
     <td class="readonly-note">—</td>
@@ -2016,6 +2025,9 @@ async function initOwnerMode(){
     );
   });
 
+  document.getElementById('refreshDataBtn').addEventListener('click', ()=>location.reload());
+  window.addEventListener('pageshow', e=>{ if(e.persisted && locked) location.reload(); });
+  window.addEventListener('focus', async ()=>{ if(locked){ await loadData(); renderAll(); setSaveStatus('', 'Refreshed'); } });
   document.getElementById('signOutBtn').addEventListener('click', async ()=>{
     if(savePending) await flushSave();
     signOut(auth);
