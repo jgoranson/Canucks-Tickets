@@ -737,7 +737,7 @@ function defaultTicket(gameIdx){
   const tierInfo = TIERS[tierKey];
   const purchase = (tierInfo && tierInfo.price != null) ? tierInfo.price.toFixed(2) : '';
   // market = Market CAD (what the public listing shows); marketUsd = Market USD input
-  return { tier:tierKey, purchase:purchase, marketUsd:'', market:'', tmListed:'', sold:'', soldTo:'', transferTo:'', transferFee:'', transferSoldPrice:'', transferSoldTo:'', transferLocation:'' };
+  return { tier:tierKey, purchase:purchase, marketUsd:'', market:'', tmListed:'', sold:'', soldTo:'', transferTo:'', transferFee:'', transferSoldPrice:'', transferSoldTo:'', transferLocation:'', transferTmListed:'' };
 }
 
 function num(v){ return parseFloat(v); }
@@ -1119,8 +1119,9 @@ function renderStats(){
       } else if(t.transferTo === '' && !isNaN(market)){
         marketEdge += (market - cost);
       }
-      if(isNaN(final.price) && t.transferTo === ''){
-        if(!isNaN(num(t.tmListed))) tmListedCount++;
+      if(isNaN(final.price)){
+        const activeListing = t.transferTo === '' ? t.tmListed : t.transferTmListed;
+        if(!isNaN(num(activeListing))) tmListedCount++;
         else tmUnlistedCount++;
       }
     });
@@ -1234,7 +1235,7 @@ function updateGameSoldShading(gi){
 const FIELD_LABELS = {
   purchase:'Purchase $', marketUsd:'Market USD', market:'Market CAD', tmListed:'TM Listed',
   sold:'Sold $', soldTo:'Sold To', transferTo:'Transfer To', transferFee:'Transfer / Extra $',
-  transferSoldPrice:'Sold $', transferSoldTo:'Sold To', tier:'Tier'
+  transferSoldPrice:'Sold $', transferSoldTo:'Sold To', transferTmListed:'TM Listed', tier:'Tier'
 };
 
 function cadFromUsd(usd){
@@ -1560,7 +1561,7 @@ function virtualRow(originGi, originSeat, destGi){
     <td class="readonly-note readonly-cost" title="Original purchase + Transfer / Extra $">${money(cost)}</td>
     <td class="readonly-note">—</td>
     <td class="readonly-note">—</td>
-    <td class="readonly-note">—</td>
+    <td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="transferTmListed" value="${escapeHtml(t.transferTmListed || '')}" placeholder="not listed" title="Ticketmaster asking price for this exchanged seat"></td>
     <td><input type="number" step="0.01" inputmode="decimal" class="num-input" data-field="transferSoldPrice" value="${escapeHtml(t.transferSoldPrice)}" placeholder="0.00"></td>
     <td>
       <select class="sold-select" data-field="transferSoldTo">
@@ -1575,7 +1576,7 @@ function virtualRow(originGi, originSeat, destGi){
     <td class="actions-cell"></td>
   `;
 
-  ['transferSoldPrice','transferFee'].forEach(field=>{
+  ['transferTmListed','transferSoldPrice','transferFee'].forEach(field=>{
     const el = tr.querySelector(`[data-field="${field}"]`);
     bindNumberInput(el, {
       label: ()=> `Edit ${FIELD_LABELS[field]} · ${where}`,
@@ -2086,4 +2087,3 @@ onAuthStateChanged(auth, async (user)=>{
 </script>
 </body>
 </html>
-
